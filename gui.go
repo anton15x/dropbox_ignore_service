@@ -21,6 +21,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+//go:generate fyne bundle -o bundled_icon_generated.go assets/icon.png
+//go:generate fyne bundle -o bundled_icon_generated.go -append assets/icon.ico
+
 func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPathsSet *SortedStringSet, ignoreFilesSet *SortedStringSet) error {
 	// guiCtx, guiCtxStop := context.WithCancel(ctx)
 	guiCtx := ctx
@@ -35,8 +38,6 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 	// }
 
 	// fyne bundle  --help
-	//go:generate fyne bundle -o bundled_icon_generated.go assets/icon.png
-	//go:generate fyne bundle -o bundled_icon_generated.go -append assets/icon.ico
 
 	a := app.New()
 	// a := app.NewWithID("dropbox_ignore_service")
