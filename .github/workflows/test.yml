@@ -44,6 +44,8 @@ jobs:
       - name: Install dependencies
         # run: go get .
         run: go mod download
+      - name: Generate
+        run: go generate ./...
       - name: Build
         run: go build -v ./...
       - name: Test with Go
