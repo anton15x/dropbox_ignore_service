@@ -23,6 +23,10 @@ func setupTestEnvironment(t *testing.T) (string, *log.Logger, context.Context) {
 	// TODO: test dependent instead of global log?
 	l := log.Default()
 
+	var err error
+	tmpDir, err = filepath.Abs(tmpDir)
+	require.Nil(t, err)
+
 	return tmpDir, l, ctx
 }
 
