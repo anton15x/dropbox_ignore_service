@@ -63,10 +63,9 @@ jobs:
         run: go test ./...
       - name: Build
         run: go build -v ./...
-      - name: Setup tmate session
+      - name: Setup tmate session for debbuging action
         if: ${{ failure() || inputs.debug_enabled }}
         uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 5
       #- name: Test with Go
       #  run: go test -json > TestResults-${{ matrix.go-version }}.json
       #- name: Upload Go test results

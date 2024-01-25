@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -229,7 +230,9 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 					}
 				}
 
-				time.Sleep(time.Second)
+				if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+					time.Sleep(time.Second)
+				}
 
 				var wg sync.WaitGroup
 				i, err := main.NewDropboxIgnorer(dropboxDir, test.tryRun, logger, ctxCancelAble, &wg, main.NewSortedStringSet(), main.NewSortedStringSet())
@@ -247,6 +250,10 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				ignoredFilesChan := make(chan string, 5)
 				i.ListenForEvents(ignoredFilesChan)
 
+				if runtime.GOOS == "linux" {
+					time.Sleep(time.Second)
+				}
+
 				if testVariant.initialCreate {
 					for i := len(test.folders) - 1; i >= 0; i-- {
 						folder := test.folders[i]
@@ -254,10 +261,16 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 					}
 				}
 
-				time.Sleep(time.Second)
+				if runtime.GOOS == "linux" {
+					time.Sleep(time.Second)
+				}
 
 				for _, folder := range test.folders {
 					require.Nil(t, os.Mkdir(folder.path, os.ModePerm))
+					// TODO: fast creating folders lead to missing folder change events on linux
+					if runtime.GOOS == "linux" {
+						time.Sleep(time.Second)
+					}
 
 					if folder.ignored {
 						log.Printf("waiting for folder create event of %s", folder.path)
