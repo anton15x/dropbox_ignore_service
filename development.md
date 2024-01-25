@@ -28,6 +28,10 @@ fyne-cross linux
 fyne-cross linux -arch=arm # raspberry
 fyne-cross darwin
 
+
+// https://www.dropbox.com/install-linux
+dropbox linux headless installation, auto login = ?
+
 ```
 
 

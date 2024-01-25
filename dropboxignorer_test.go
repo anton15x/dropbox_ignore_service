@@ -250,7 +250,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				ignoredFilesChan := make(chan string, 5)
 				i.ListenForEvents(ignoredFilesChan)
 
-				if runtime.GOOS == "linux" {
+				if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 					time.Sleep(time.Second)
 				}
 
