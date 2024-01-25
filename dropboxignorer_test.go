@@ -261,7 +261,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 					}
 				}
 
-				if runtime.GOOS == "linux" {
+				if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 					time.Sleep(time.Second)
 				}
 
