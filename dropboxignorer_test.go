@@ -23,11 +23,33 @@ func setupTestEnvironment(t *testing.T) (string, *log.Logger, context.Context) {
 	// TODO: test dependent instead of global log?
 	l := log.Default()
 
-	var err error
-	tmpDir, err = filepath.Abs(tmpDir)
-	require.Nil(t, err)
-
 	return tmpDir, l, ctx
+}
+
+/**
+ * checks is tow filepaths are equal
+ *
+ * github acitons fails on macOS because of this error:
+ * --- FAIL: TestDropboxIgnorerListenEvents/base_name_and_subfolder_variant_watch_only (0.17s)
+ *
+ * 	dropboxignorer_test.go:227:
+ * 	    	Error Trace:	/Users/runner/work/dropbox_ignore_service/dropbox_ignore_service/dropboxignorer_test.go:227
+ * 	    	Error:      	Not equal:
+ * 	    	            	expected: "/var/folders/qv/pdh5wsgn0lq3dp77zj602b5c0000gn/T/TestDropboxIgnorerListenEventsbase_name_and_subfolder_variant_watch_only2776636403/001/my_project/node_modules"
+ * 	    	            	actual  : "/private/var/folders/qv/pdh5wsgn0lq3dp77zj602b5c0000gn/T/TestDropboxIgnorerListenEventsbase_name_and_subfolder_variant_watch_only2776636403/001/my_project/node_modules"
+ */
+func equalFilePaths(t *testing.T, dropboxDir, expected, got string) {
+	if expected != got {
+		expectedRel, err := filepath.Rel(dropboxDir, expected)
+		require.Nil(t, err)
+		gotRel, err := filepath.Rel(dropboxDir, expected)
+		require.Nil(t, err)
+		if expectedRel == gotRel {
+			expected = expectedRel
+			got = gotRel
+		}
+	}
+	require.Equal(t, expected, got)
 }
 
 func createDropboxignore(t *testing.T, filename string, patterns ...string) {
@@ -224,7 +246,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 
 					if folder.ignored {
 						log.Printf("waiting for folder create event of %s", folder.path)
-						require.Equal(t, folder.path, <-ignoredFilesChan)
+						equalFilePaths(t, dropboxDir, folder.path, <-ignoredFilesChan)
 						isIgnored, err := main.HasDropboxIgnoreFlag(folder.path)
 						require.Nil(t, err)
 						require.Equal(t, folder.ignored && !test.tryRun, isIgnored, folder.path)
