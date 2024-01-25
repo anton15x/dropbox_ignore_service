@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -219,9 +220,22 @@ func RemoveDropboxIgnoreFlag(path string) error {
 				unWrappedErr = eErr.Err
 			}
 		*/
+
+		if err != nil {
+			eErr, ok := err.(*xattr.Error)
+			if ok {
+				xattrErr := eErr.Err
+				log.Printf("xattrErr: %s", xattrErr)
+				log.Printf("xattrErr s: %s", xattrErr.Error())
+			}
+			log.Printf("Error: %s", err)
+			log.Printf("Error s: %s", err.Error())
 		unWrappedErr := errors.Unwrap(err)
+			fmt.Printf("unwrapped error: %s", err)
+			fmt.Printf("unwrapped error s: %s", err.Error())
 		if unWrappedErr.Error() == "attribute not found" {
 			return nil
+			}
 		}
 
 		return handleXattrErr(err)
