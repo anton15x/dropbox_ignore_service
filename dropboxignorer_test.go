@@ -269,14 +269,25 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 					require.Equal(t, folder.ignored && !test.tryRun, isIgnored, folder.path)
 				}
 
-				ctxCancel()
-				wg.Wait()
-
 				// c should be empty now:
 				for ok := true; ok; {
 					select {
 					case p := <-ignoredFilesChan:
 						assert.Fail(t, "expected no additional events but got:", p)
+					default:
+						ok = false
+					}
+				}
+
+				ctxCancel()
+				wg.Wait()
+
+				// c should still be empty:
+				for ok := true; ok; {
+					select {
+					case p := <-ignoredFilesChan:
+						// on macOS the root folder gets notified as an event after closing
+						equalFilePaths(t, dropboxDir, dropboxDir, p)
 					default:
 						ok = false
 					}

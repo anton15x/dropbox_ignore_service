@@ -231,8 +231,8 @@ func RemoveDropboxIgnoreFlag(path string) error {
 			log.Printf("Error: %s", err)
 			log.Printf("Error s: %s", err.Error())
 		unWrappedErr := errors.Unwrap(err)
-			fmt.Printf("unwrapped error: %s", err)
-			fmt.Printf("unwrapped error s: %s", err.Error())
+			log.Printf("unwrapped error: %s", unWrappedErr)
+			log.Printf("unwrapped error s: %s", unWrappedErr.Error())
 		if unWrappedErr.Error() == "attribute not found" {
 			return nil
 			}
