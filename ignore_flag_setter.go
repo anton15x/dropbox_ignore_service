@@ -206,7 +206,25 @@ func RemoveDropboxIgnoreFlag(path string) error {
 		if !xattr.XATTR_SUPPORTED {
 			return fmt.Errorf("xattr not supported")
 		}
-		return handleXattrErr(xattr.Remove(path, "com.dropbox.ignored"))
+		err := xattr.Remove(path, "com.dropbox.ignored")
+		// TODO: windows does not export this at syscall, add Pr to xattr to re export it there?
+		// if errors.Is(err,  syscall.Errno(syscall.ENOATTR)){
+		//   return nil
+		// }
+
+		/*
+			unWrappedErr := err
+			eErr, ok := err.(*xattr.Error)
+			if ok {
+				unWrappedErr = eErr.Err
+			}
+		*/
+		unWrappedErr := errors.Unwrap(err)
+		if unWrappedErr.Error() == "attribute not found" {
+			return nil
+		}
+
+		return handleXattrErr(err)
 	}
 
 }
