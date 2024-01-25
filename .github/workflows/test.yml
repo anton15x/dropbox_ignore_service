@@ -6,7 +6,17 @@ permissions:
   # pull-requests needed by actions/commit-status-updater to add comments to PRs
   pull-requests: write 
 
-on: [push, pull_request]
+on: 
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
+
 
 jobs:
   set_pending_status:
@@ -53,6 +63,9 @@ jobs:
         run: go build -v ./...
       - name: Test with Go
         run: go test ./...
+      - name: Setup tmate session
+        if: ${{ failure() || inputs.debug_enabled }}
+        uses: mxschmitt/action-tmate@v3
       #- name: Test with Go
       #  run: go test -json > TestResults-${{ matrix.go-version }}.json
       #- name: Upload Go test results
