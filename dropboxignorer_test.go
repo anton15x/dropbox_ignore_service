@@ -47,6 +47,16 @@ func equalFilePaths(t *testing.T, dropboxDir, expected, got string) {
 		if expectedRel == gotRel {
 			expected = expectedRel
 			got = gotRel
+			t.Logf("equalFilePaths filepath.Rel to dropboxDir equal for expected: %s and got: %s", expected, got)
+		} else {
+			expectedStat, err := os.Stat(expected)
+			require.Nil(t, err)
+			gotStat, err := os.Stat(got)
+			require.Nil(t, err)
+			if os.SameFile(expectedStat, gotStat) {
+				got = expected
+				t.Logf("equalFilePaths os.SameFile equal for expected: %s and got: %s", expected, got)
+			}
 		}
 	}
 	require.Equal(t, expected, got)
