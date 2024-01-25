@@ -32,6 +32,12 @@ type DropboxIgnorer struct {
 }
 
 func NewDropboxIgnorer(dropboxPath string, tryRun bool, logger *log.Logger, ctx context.Context, wg *sync.WaitGroup, ignoredPathsSet *SortedStringSet, ignoreFiles *SortedStringSet) (*DropboxIgnorer, error) {
+	dropboxPathAbs, err := filepath.Abs(dropboxPath)
+	if err != nil {
+		return nil, fmt.Errorf("error getting absolute path of %s: %w", dropboxPath, err)
+	}
+	dropboxPath = dropboxPathAbs
+
 	modificationChan := make(chan notify.EventInfo, 1000)
 
 	i := &DropboxIgnorer{
@@ -46,7 +52,7 @@ func NewDropboxIgnorer(dropboxPath string, tryRun bool, logger *log.Logger, ctx 
 	}
 
 	// err := notify.Watch(filepath.Join(i.dropboxPath, "..."), i.modificationChan, notify.Create|notify.Rename)
-	err := notify.Watch(filepath.Join(i.dropboxPath, "..."), i.modificationChan, notify.Create|notify.Rename|notify.Remove)
+	err = notify.Watch(filepath.Join(i.dropboxPath, "..."), i.modificationChan, notify.Create|notify.Rename|notify.Remove)
 	if err != nil {
 		return nil, fmt.Errorf("error watching files: %s", err)
 	}
@@ -165,6 +171,15 @@ func (i *DropboxIgnorer) ListenForEvents(cb chan string) {
 			case ei := <-i.modificationChan:
 				i.logger.Printf("got event: %s %s", ei.Event().String(), ei.Path())
 				path := ei.Path()
+				if !strings.HasPrefix(path, i.dropboxPath) {
+					_, after, found := strings.Cut(path, i.dropboxPath)
+					if found {
+						path = filepath.Join(i.dropboxPath, after)
+					} else {
+						i.logger.Printf("dropbox %s got event not containing dropbox path: %s", i.dropboxPath, path)
+					}
+				}
+
 				event := ei.Event()
 				if event == notify.Create || event == notify.Rename {
 					// info: rename event is triggered for both, the new AND old name => stat to check if path exists
