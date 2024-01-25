@@ -42,7 +42,7 @@ func equalFilePaths(t *testing.T, dropboxDir, expected, got string) {
 	if expected != got {
 		expectedRel, err := filepath.Rel(dropboxDir, expected)
 		require.Nil(t, err)
-		gotRel, err := filepath.Rel(dropboxDir, expected)
+		gotRel, err := filepath.Rel(dropboxDir, got)
 		require.Nil(t, err)
 		if expectedRel == gotRel {
 			expected = expectedRel
