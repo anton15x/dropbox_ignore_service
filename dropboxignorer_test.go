@@ -210,7 +210,8 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				t.Parallel()
 
 				dropboxDir, logger, ctx := setupTestEnvironment(t)
-				ctxCancelAble, ctxCancel := context.WithCancel(ctx)
+				ctxCancelAble, ctxCancel := context.WithTimeout(ctx, 60*time.Second)
+				defer ctxCancel()
 
 				test.prepare(t, dropboxDir)
 
