@@ -47,6 +47,7 @@ dropbox_ignore_service
 ## Resources:
 dropbox documentation about ignoring files:
 https://help.dropbox.com/sync/ignored-files
+https://help.dropbox.com/de-de/sync/extended-attributes
 
 dropbox documentation about finding pragmatically the dropbox folder(s):
 https://help.dropbox.com/de-de/installs/locate-dropbox-folder

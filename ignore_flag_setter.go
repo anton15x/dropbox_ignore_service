@@ -223,13 +223,13 @@ var implementations = []Implementation{
 			if !xattr.XATTR_SUPPORTED {
 				return fmt.Errorf("xattr not supported")
 			}
-			return handleXattrErr(xattr.Set(path, "com.dropbox.ignored", []byte("1")))
+			return handleXattrErr(xattr.Set(path, "user.com.dropbox.ignored", []byte("1")))
 		},
 		RemoveFlag: func(path string) error {
 			if !xattr.XATTR_SUPPORTED {
 				return fmt.Errorf("xattr not supported")
 			}
-			err := xattr.Remove(path, "com.dropbox.ignored")
+			err := xattr.Remove(path, "user.com.dropbox.ignored")
 			// TODO: windows does not export this at syscall, add Pr to xattr to re export it there?
 			if errors.Is(err, xattr.ENOATTR) {
 				return nil
@@ -273,7 +273,7 @@ var implementations = []Implementation{
 			}
 			found := false
 			for _, attr := range attrs {
-				if attr == "com.dropbox.ignored" {
+				if attr == "user.com.dropbox.ignored" {
 					found = true
 				}
 			}
@@ -281,7 +281,7 @@ var implementations = []Implementation{
 				return false, nil
 			}
 
-			b, err := xattr.Get(path, "com.dropbox.ignored")
+			b, err := xattr.Get(path, "user.com.dropbox.ignored")
 			if err != nil {
 				err = handleXattrErr(err)
 				// TOTO: what is ENOATTR?
@@ -296,28 +296,35 @@ var implementations = []Implementation{
 		runtimeOS: []string{runtime.GOOS},
 	},
 	{
-		/*
-			echo "test" > testfile
-			attr -l testfile
-			attr -g "com.dropbox.ignored" testfile
-			attr -s "com.dropbox.ignored" -V 1 testfile
-			attr -l testfile
-			attr -g "com.dropbox.ignored" testfile
-			attr -r "com.dropbox.ignored" testfile
-			attr -l testfile
-			attr -g "com.dropbox.ignored" testfile
-
-			pi@raspberrypi:~ $ attr
-			A filename to operate on is required
-			Usage: attr [-LRSq] -s attrname [-V attrvalue] pathname  # set value
-
-				attr [-LRSq] -g attrname pathname                 # get value
-				attr [-LRSq] -r attrname pathname                 # remove attr
-				attr [-LRq]  -l pathname                          # list attrs
-				-s reads a value from stdin and -g writes a value to stdout
-
-			pi@raspberrypi:~ $
-		*/
+		/**
+		*	echo "test" > testfile
+		*	attr -l testfile
+		*	attr -g "com.dropbox.ignored" testfile
+		*	attr -s "com.dropbox.ignored" -V 1 testfile
+		*	attr -l testfile
+		*	attr -g "com.dropbox.ignored" testfile
+		*	attr -r "com.dropbox.ignored" testfile
+		*	attr -l testfile
+		*	attr -g "com.dropbox.ignored" testfile
+		*
+		*	pi@raspberrypi:~ $ attr
+		*	A filename to operate on is required
+		*	Usage: attr [-LRSq] -s attrname [-V attrvalue] pathname  # set value
+		*		   attr [-LRSq] -g attrname pathname                 # get value
+		*		   attr [-LRSq] -r attrname pathname                 # remove attr
+		*		   attr [-LRq]  -l pathname                          # list attrs
+		*		   -s reads a value from stdin and -g writes a value to stdout
+		*	pi@raspberrypi:~ $
+		*
+		* runner@fv-az1429-457:~/work/dropbox_ignore_service/dropbox_ignore_service$ attr --help
+		* attr: invalid option -- '-'
+		* Unrecognized option: ?
+		* Usage: attr [-LRSq] -s attrname [-V attrvalue] pathname  # set value
+		*        attr [-LRSq] -g attrname pathname                 # get value
+		*        attr [-LRSq] -r attrname pathname                 # remove attr
+		*        attr [-LRq]  -l pathname                          # list attrs
+		*       -s reads a value from stdin and -g writes a value to stdout
+		 */
 		SetFlag: func(path string) error {
 			return execCommand("attr", "-s", "com.dropbox.ignored", "-V", "1", path)
 		},
@@ -334,6 +341,59 @@ var implementations = []Implementation{
 				out, err := execCommandGetOutput("attr", "-g", "com.dropbox.ignored", path)
 				if err != nil {
 					return false, fmt.Errorf("Error getting com.dropbox.ignored attribute for file %s: %s", err, path)
+				}
+
+				if bytes.Equal(out, []byte("1")) {
+					return true, nil
+				}
+			}
+
+			return false, nil
+		},
+		runtimeOS: []string{runtime.GOOS},
+	},
+	{
+		/**
+		 * runner@fv-az1429-457:~/work/dropbox_ignore_service/dropbox_ignore_service$ xattr --help
+		 * usage: xattr [-slz] file [file ...]
+		 *        xattr -p [-slz] attr_name file [file ...]
+		 *        xattr -w [-sz] attr_name attr_value file [file ...]
+		 *        xattr -d [-s] attr_name file [file ...]
+		 *
+		 * The first form lists the names of all xattrs on the given file(s).
+		 * The second form (-p) prints the value of the xattr attr_name.
+		 * The third form (-w) sets the value of the xattr attr_name to attr_value.
+		 * The fourth form (-d) deletes the xattr attr_name.
+		 *
+		 * options:
+		 *   -h: print this help
+		 *   -s: act on symbolic links themselves rather than their targets
+		 *   -l: print long format (attr_name: attr_value)
+		 *   -z: compress or decompress (if compressed) attribute value in zip format
+		 * runner@fv-az1429-457:~/work/dropbox_ignore_service/dropbox_ignore_service$
+		 *
+		 *	echo "test" > testfile
+		 *	xattr -w "user.com.dropbox.ignored" 1 testfile
+		 *	xattr -l testfile
+		 *	xattr -p "user.com.dropbox.ignored" testfile
+		 *	xattr -d "user.com.dropbox.ignored" testfile
+		 */
+		SetFlag: func(path string) error {
+			return execCommand("xattr", "-s", "user.com.dropbox.ignored", "-V", "1", path)
+		},
+		RemoveFlag: func(path string) error {
+			return execCommand("xattr", "-d", "user.com.dropbox.ignored", path)
+		},
+		HasFlag: func(path string) (bool, error) {
+			out, err := execCommandGetOutput("attr", "-l", path)
+			if err != nil {
+				return false, fmt.Errorf("error getting attributes for file %s: %s", err, path)
+			}
+
+			if bytes.Contains(out, []byte("user.com.dropbox.ignored")) {
+				out, err := execCommandGetOutput("xattr", "-p", "user.com.dropbox.ignored", path)
+				if err != nil {
+					return false, fmt.Errorf("error getting com.dropbox.ignored attribute for file %s: %s", err, path)
 				}
 
 				if bytes.Equal(out, []byte("1")) {
