@@ -66,6 +66,7 @@ jobs:
       - name: Setup tmate session
         if: ${{ failure() || inputs.debug_enabled }}
         uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 5
       #- name: Test with Go
       #  run: go test -json > TestResults-${{ matrix.go-version }}.json
       #- name: Upload Go test results

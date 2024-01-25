@@ -227,8 +227,9 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 					for _, folder := range test.folders {
 						require.Nil(t, os.Mkdir(folder.path, os.ModePerm))
 					}
-					time.Sleep(time.Second)
 				}
+
+				time.Sleep(time.Second)
 
 				var wg sync.WaitGroup
 				i, err := main.NewDropboxIgnorer(dropboxDir, test.tryRun, logger, ctxCancelAble, &wg, main.NewSortedStringSet(), main.NewSortedStringSet())
@@ -252,6 +253,8 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 						require.Nil(t, os.Remove(folder.path))
 					}
 				}
+
+				time.Sleep(time.Second)
 
 				for _, folder := range test.folders {
 					require.Nil(t, os.Mkdir(folder.path, os.ModePerm))

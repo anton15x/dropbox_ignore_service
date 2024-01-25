@@ -284,10 +284,10 @@ var implementations = []Implementation{
 			b, err := xattr.Get(path, "user.com.dropbox.ignored")
 			if err != nil {
 				err = handleXattrErr(err)
-				// TOTO: what is ENOATTR?
-				// if errors.Is(err, xattr.ENOATTR) {
-				// 	return false, nil
-				// }
+				// TOTO: is this possible?
+				if errors.Is(err, xattr.ENOATTR) {
+					return false, nil
+				}
 				return false, err
 			}
 
@@ -334,13 +334,13 @@ var implementations = []Implementation{
 		HasFlag: func(path string) (bool, error) {
 			out, err := execCommandGetOutput("attr", "-l", path)
 			if err != nil {
-				return false, fmt.Errorf("Error getting attributes for file %s: %s", err, path)
+				return false, fmt.Errorf("error getting attributes for file %s: %s", err, path)
 			}
 
 			if bytes.Contains(out, []byte("com.dropbox.ignored")) {
 				out, err := execCommandGetOutput("attr", "-g", "com.dropbox.ignored", path)
 				if err != nil {
-					return false, fmt.Errorf("Error getting com.dropbox.ignored attribute for file %s: %s", err, path)
+					return false, fmt.Errorf("error getting com.dropbox.ignored attribute for file %s: %s", err, path)
 				}
 
 				if bytes.Equal(out, []byte("1")) {
