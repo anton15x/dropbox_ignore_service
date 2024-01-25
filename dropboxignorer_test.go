@@ -226,6 +226,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 					for _, folder := range test.folders {
 						require.Nil(t, os.Mkdir(folder.path, os.ModePerm))
 					}
+					time.Sleep(time.Second)
 				}
 
 				var wg sync.WaitGroup
