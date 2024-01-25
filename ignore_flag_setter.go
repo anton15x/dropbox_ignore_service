@@ -132,6 +132,16 @@ func isAttrInstalled() (retOk bool, retErr error) {
 	return false, nil
 }
 
+func handleXattrErr(err error) error {
+	if err != nil {
+		eErr, ok := err.(*xattr.Error)
+		if ok {
+			err = fmt.Errorf("error stringified: %s", eErr.Error())
+		}
+	}
+	return err
+}
+
 func init() {
 	ok, err := isAttrInstalled()
 	if err == nil && !ok {
@@ -156,7 +166,7 @@ func SetDropboxIgnoreFlag(path string) error {
 		if !xattr.XATTR_SUPPORTED {
 			return fmt.Errorf("xattr not supported")
 		}
-		return xattr.Set(path, "com.dropbox.ignored", []byte("1"))
+		return handleXattrErr(xattr.Set(path, "com.dropbox.ignored", []byte("1")))
 	}
 }
 
@@ -196,7 +206,7 @@ func RemoveDropboxIgnoreFlag(path string) error {
 		if !xattr.XATTR_SUPPORTED {
 			return fmt.Errorf("xattr not supported")
 		}
-		return xattr.Remove(path, "com.dropbox.ignored")
+		return handleXattrErr(xattr.Remove(path, "com.dropbox.ignored"))
 	}
 
 }
@@ -219,6 +229,7 @@ func HasDropboxIgnoreFlag(path string) (bool, error) {
 		}
 		attrs, err := xattr.List(path)
 		if err != nil {
+			err = handleXattrErr(err)
 			return false, err
 		}
 		found := false
@@ -233,6 +244,7 @@ func HasDropboxIgnoreFlag(path string) (bool, error) {
 
 		b, err = xattr.Get(path, "com.dropbox.ignored")
 		if err != nil {
+			err = handleXattrErr(err)
 			// TOTO: what is ENOATTR?
 			// if errors.Is(err, xattr.ENOATTR) {
 			// 	return false, nil
