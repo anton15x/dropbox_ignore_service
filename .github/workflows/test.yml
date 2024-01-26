@@ -1,11 +1,5 @@
 name: Test
 
-permissions:
-  # statuses needed by actions/commit-status-updater to update commit status
-  statuses: write
-  # pull-requests needed by actions/commit-status-updater to add comments to PRs
-  pull-requests: write 
-
 on: 
   push:
   pull_request:
@@ -19,14 +13,6 @@ on:
 
 
 jobs:
-  set_pending_status:
-    runs-on: ubuntu-latest
-    steps:
-      - name: "add pending status"
-        uses: ouzi-dev/commit-status-updater@v2
-        with:
-          addHoldComment: "true"
-          status: "${{ job.status }}"
   test:
     strategy:
       fail-fast: false
@@ -62,24 +48,8 @@ jobs:
       - name: Test with Go
         run: go test ./...
       - name: Build
-        run: go build -v ./...
+        # run: go build -v ./...
+        run: fyne package --release
       - name: Setup tmate session for debbuging action
-        if: ${{ failure() || inputs.debug_enabled }}
+        if: ${{ inputs.debug_enabled }}
         uses: mxschmitt/action-tmate@v3
-      #- name: Test with Go
-      #  run: go test -json > TestResults-${{ matrix.go-version }}.json
-      #- name: Upload Go test results
-      #  uses: actions/upload-artifact@v3
-      #  with:
-      #    name: Go-results-${{ matrix.go-version }}
-      #    path: TestResults-${{ matrix.go-version }}.json
-  set_final_commit_status:
-    runs-on: ubuntu-latest
-    if: ${{ always() }}
-    needs: [test]
-    steps:
-      - name: "set final status ${{ job.status }}"
-        uses: ouzi-dev/commit-status-updater@v2
-        with:
-          addHoldComment: "true"
-          status: "${{ job.status }}"

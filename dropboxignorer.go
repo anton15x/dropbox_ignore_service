@@ -207,9 +207,18 @@ func (i *DropboxIgnorer) ListenForEvents(cb chan string) {
 					}
 				}
 				if event == notify.Remove {
-					i.ignoredPathsSet.Remove(path)
-					if filepath.Base(path) == DropboxIgnoreFilename {
-						i.removeIgnoreFile(path)
+					// sometimes event order is incorrect => stat and check if file is created
+					// e.g. fast delete file and create is again could swap the order of events
+					_, err := os.Stat(path)
+					if err != nil {
+						if !os.IsNotExist(err) {
+							i.logger.Printf("stat for path failed: %s", err)
+						} else {
+							i.ignoredPathsSet.Remove(path)
+							if filepath.Base(path) == DropboxIgnoreFilename {
+								i.removeIgnoreFile(path)
+							}
+						}
 					}
 				}
 			}

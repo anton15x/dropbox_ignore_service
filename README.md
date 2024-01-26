@@ -63,8 +63,12 @@ also parses .dropboxignore files more featured but without fs watch
 ## used libraries:
 - [rjeczalik/notify](https://github.com/rjeczalik/notify) filesystem change event listener:
 - [pkg/xattr](https://github.com/pkg/xattr) read extended file attribute for linux/darwin.
+- [fyne.io/fyne](https://github.com/fyne-io/fyne) Cross platform GUI toolkit in Go inspired by Material Design
+- [spiretechnology/go-autostart](https://github.com/spiretechnology/go-autostart) for setting the executable to autostart with the system
+- [stretchr/testify](https://github.com/stretchr/testify) testing of course
 
 ## Limitations/TODO:
 - allow patters, to prevent possible braking changes, special characters got disabled for now: `*\#[]?!`
   glob reference: https://globster.xyz/
-- nested dropboxignore files (ignore fiels in subfolders)
+- nested dropboxignore files (ignore files in sub folders)
+- according to github actions test, ubuntu and darwin may miss fast recursively created folders

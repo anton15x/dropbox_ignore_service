@@ -49,8 +49,8 @@ func (us *SortedStringSet) Remove(val string) bool {
 	}
 
 	delete(us.valueMap, val)
-	for i, cval := range us.Values {
-		if cval == val {
+	for i, cVal := range us.Values {
+		if cVal == val {
 			us.Values = append(us.Values[:i], us.Values[i+1:]...)
 			break
 		}

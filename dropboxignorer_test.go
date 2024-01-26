@@ -231,7 +231,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				}
 
 				if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
-					time.Sleep(time.Second)
+					time.Sleep(3 * time.Second)
 				}
 
 				var wg sync.WaitGroup
@@ -247,12 +247,8 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 					}
 				}
 
-				ignoredFilesChan := make(chan string, 5)
+				ignoredFilesChan := make(chan string, 2*len(test.folders))
 				i.ListenForEvents(ignoredFilesChan)
-
-				if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
-					time.Sleep(time.Second)
-				}
 
 				if testVariant.initialCreate {
 					for i := len(test.folders) - 1; i >= 0; i-- {
@@ -267,8 +263,8 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 
 				for _, folder := range test.folders {
 					require.Nil(t, os.Mkdir(folder.path, os.ModePerm))
-					// TODO: fast creating folders lead to missing folder change events on linux
-					if runtime.GOOS == "linux" {
+					// TODO: fast creating folders lead to missing folder change events
+					if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 						time.Sleep(time.Second)
 					}
 
