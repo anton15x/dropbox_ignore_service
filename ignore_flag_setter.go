@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -230,34 +229,8 @@ var implementations = []Implementation{
 				return fmt.Errorf("xattr not supported")
 			}
 			err := xattr.Remove(path, "user.com.dropbox.ignored")
-			// TODO: windows does not export this at syscall, add Pr to xattr to re export it there?
 			if errors.Is(err, xattr.ENOATTR) {
 				return nil
-			}
-
-			/*
-				unWrappedErr := err
-				eErr, ok := err.(*xattr.Error)
-				if ok {
-					unWrappedErr = eErr.Err
-				}
-			*/
-
-			if err != nil {
-				eErr, ok := err.(*xattr.Error)
-				if ok {
-					xattrErr := eErr.Err
-					log.Printf("xattrErr: %s", xattrErr)
-					log.Printf("xattrErr s: %s", xattrErr.Error())
-				}
-				log.Printf("Error: %s", err)
-				log.Printf("Error s: %s", err.Error())
-				unWrappedErr := errors.Unwrap(err)
-				log.Printf("unwrapped error: %s", unWrappedErr)
-				log.Printf("unwrapped error s: %s", unWrappedErr.Error())
-				if unWrappedErr.Error() == "attribute not found" {
-					return nil
-				}
 			}
 
 			return handleXattrErr(err)
