@@ -5,4 +5,4 @@ Website = "https://github.com/anton15x/dropbox_ignore_service"
   Name = "Dropbox Ignore Service"
   ID = "com.github.anton15x.dropbox_ignore_service"
   Version = "0.0.1"
-  Build = 7
+  Build = 1

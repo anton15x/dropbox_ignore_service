@@ -57,48 +57,38 @@ func NewDropboxIgnorer(dropboxPath string, tryRun bool, logger *log.Logger, ctx 
 		return nil, fmt.Errorf("error watching files: %s", err)
 	}
 
-	var initWg sync.WaitGroup
-	initWg.Add(1)
-
-	i.wg.Add(1)
-	go func() {
-		defer i.wg.Done()
-		defer initWg.Done()
-
-		i.logger.Printf("initial walk started for %s", i.dropboxPath)
-		err := filepath.WalkDir(i.dropboxPath, func(path string, info fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			if i.ctx.Err() != nil {
-				return fmt.Errorf("program is shutting down before finish initial file walk")
-			}
-
-			if i.ShouldPathGetIgnored(path) {
-				err = i.SetIgnoreFlag(path)
-				if err != nil {
-					i.logger.Printf("Error ignoring dir %s: %s", path, err)
-				}
-
-				return filepath.SkipDir
-			}
-
-			if filepath.Base(path) == DropboxIgnoreFilename {
-				err := i.addIgnoreFile(path)
-				if err != nil {
-					i.logger.Printf("error adding ignore file: %s", err)
-				}
-			}
-
-			return nil
-		})
+	i.logger.Printf("initial walk started for %s", i.dropboxPath)
+	err = filepath.WalkDir(i.dropboxPath, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
-			i.logger.Printf("Error at initial files walk of folder %s: %s", i.dropboxPath, err)
+			return err
 		}
-		i.logger.Printf("initial walk finished for %s", i.dropboxPath)
-	}()
-	initWg.Wait()
+
+		if i.ctx.Err() != nil {
+			return fmt.Errorf("program is shutting down before finish initial file walk")
+		}
+
+		if i.ShouldPathGetIgnored(path) {
+			err = i.SetIgnoreFlag(path)
+			if err != nil {
+				i.logger.Printf("Error ignoring dir %s: %s", path, err)
+			}
+
+			return filepath.SkipDir
+		}
+
+		if filepath.Base(path) == DropboxIgnoreFilename {
+			err := i.addIgnoreFile(path)
+			if err != nil {
+				i.logger.Printf("error adding ignore file: %s", err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		i.logger.Printf("Error at initial files walk of folder %s: %s", i.dropboxPath, err)
+	}
+	i.logger.Printf("initial walk finished for %s", i.dropboxPath)
 
 	return i, nil
 }

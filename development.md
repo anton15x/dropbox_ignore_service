@@ -1,10 +1,13 @@
+/* cSpell:disable */
+
 # development
 ## building:
 ```bash
 go mod tidy
 
 go generate ./...
-go build
+# go build
+fyne package --release
 ./dropbox_ignore_service
 
 36846920 go build
@@ -105,13 +108,6 @@ go test -run ^TestIgnoreFlagModify$ github.com/anton15x/dropbox_ignore_service
 go test -coverprofile cover.out ./... 
 go tool cover -html=cover.out
 ```
-
-
-
-## generate icon:
-go get github.com/cratonica/2goarray
-go install github.com/cratonica/2goarray
-cat icon.ico | 2goarray IconData main > icon.go
 
 
 

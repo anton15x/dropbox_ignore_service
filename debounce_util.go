@@ -5,20 +5,6 @@ import (
 	"time"
 )
 
-/*
-func saveCall(f func()) (err error) {
-	panicked := false
-	defer func() {
-		if panicked {
-			err = fmt.Errorf("recoverd from panic: %s", recover())
-		}
-	}()
-	f()
-	panicked = true
-	return nil
-}
-*/
-
 func debounce(f func(), t time.Duration) func() {
 	var m sync.Mutex
 	called := false

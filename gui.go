@@ -23,44 +23,20 @@ import (
 
 //go:generate fyne bundle -o bundled_icon_generated.go assets/icon.png
 //go:generate fyne bundle -o bundled_icon_generated.go -append assets/icon.ico
+// fyne bundle  --help
 
 func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPathsSet *SortedStringSet, ignoreFilesSet *SortedStringSet) error {
-	// guiCtx, guiCtxStop := context.WithCancel(ctx)
 	guiCtx := ctx
-	// wrappErrFunction := func(f func() error) func() {
-	// 	return func() {
-	// 		err := f()
-	// 		if err != nil {
-	// 			log.Printf("errlr happend: %s", err)
-	// 			guiCtxStop()
-	// 		}
-	// 	}
-	// }
 
-	// fyne bundle  --help
-
+	// FyneApp.toml has id and icon set => fyne build adds metadata for us
+	// do not use go build, instead use:
+	// fyne package --release
 	a := app.New()
 	// a := app.NewWithID("dropbox_ignore_service")
-	a.SetIcon(resourceIconIco)
-	w := a.NewWindow("Hello World")
+	// a.SetIcon(resourceIconIco)
+	w := a.NewWindow(a.Metadata().Name)
 	w.Resize(fyne.NewSize(1200, 800))
 
-	// w.SetContent(widget.NewLabel("Hello World!"))
-
-	label1 := widget.NewLabel("Label 1")
-	value1 := widget.NewEntry()
-	value1.SetText("defaultvalue")
-
-	label2 := widget.NewLabel("Label 2")
-	value2 := widget.NewEntry()
-	value2.SetPlaceHolder("placeholder")
-	grid := container.New(layout.NewFormLayout(), label1, value1, label2, value2)
-
-	w.SetContent(container.New(layout.NewFormLayout(), widget.NewLabel("Hello World2!"), grid))
-
-	// container.NewTabItem("myform", myForm)
-
-	// tab := container.NewTabItem("Tab 1", widget.NewLabel("Hello"))
 	ignoredPathsSetList := widget.NewList(
 		func() int {
 			return len(ignoredPathsSet.Values)
@@ -93,16 +69,16 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 	)
 	homeTab := container.NewTabItemWithIcon("Home", theme.SettingsIcon(), homeContent)
 
-	showOnlyRemoveableOrAllFiles := true
+	showOnlyRemovableOrAllFiles := true
 	ignoredFileNames := NewSortedStringSet()
 	checkedFileNames := NewSortedStringSet()
 	ignoredFileNamesValuesLastLenCall := []string{}
 	ignoredFilesListContent := widget.NewList(
 		func() int {
-			// saving values makes it multihtreading safe
+			// saving values makes it multithreading safe
 			ignoredFileNamesValuesLastLenCall = []string{}
 			for _, val := range ignoredFileNames.Values {
-				if !showOnlyRemoveableOrAllFiles || !ignoredPathsSet.Has(val) {
+				if !showOnlyRemovableOrAllFiles || !ignoredPathsSet.Has(val) {
 					ignoredFileNamesValuesLastLenCall = append(ignoredFileNamesValuesLastLenCall, val)
 				}
 			}
@@ -173,7 +149,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 		ignoredFilesProgressCurrentPath.Refresh()
 	}, time.Second/60)
 	var ignoredFilesCtxStop context.CancelFunc
-	rescanIgnoredFiles := func() error {
+	reScanIgnoredFiles := func() error {
 		var ignoredFilesCtx context.Context
 		ignoredFilesCtx, ignoredFilesCtxStop = context.WithCancel(guiCtx)
 
@@ -191,7 +167,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 				}
 				err = ignoredFilesCtx.Err()
 				if err != nil {
-					return fmt.Errorf("ctx cancled: %s", err)
+					return fmt.Errorf("ctx canceled: %s", err)
 				}
 				ignoredFilesProgressCurrentPath.Text = path
 				ignoredFilesProgressCurrentPathRefreshDebounced()
@@ -216,11 +192,11 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 	}
 	ignoredFilesContentError := widget.NewLabel("")
 	ignoredFilesContentError.Hide()
-	toogleShowOnlyRemoveableOrAllFilesButton := widget.NewCheck("Show only unignoreable", func(value bool) {
-		showOnlyRemoveableOrAllFiles = value
+	toggleShowOnlyRemovableOrAllFilesButton := widget.NewCheck("Show only unignoreable", func(value bool) {
+		showOnlyRemovableOrAllFiles = value
 		ignoredFilesListContent.Refresh()
 	})
-	toogleShowOnlyRemoveableOrAllFilesButton.Checked = showOnlyRemoveableOrAllFiles
+	toggleShowOnlyRemovableOrAllFilesButton.Checked = showOnlyRemovableOrAllFiles
 
 	unignoreSelectedPaths := func() {
 		var errTest []string
@@ -260,12 +236,9 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 	checkedFileNames.AddChangeEventListener(updateIgnoredFilesRemoveIgnoreFlagButton)
 	updateIgnoredFilesRemoveIgnoreFlagButton()
 
-	// ignoredFilesContent := container.New(layout.NewAdaptiveGridLayout(), ignoredFilesListContent, ignoredFilesContentError)
-	// ignoredFilesContent := container.NewGridWithColumns(
-	// 	1,
 	ignoredFilesContent := container.NewBorder(
 		container.NewVBox(ignoredFilesProgress, ignoredFilesContentError),
-		container.NewHBox(toogleShowOnlyRemoveableOrAllFilesButton, ignoredFilesRemoveIgnoreFlagButton),
+		container.NewHBox(toggleShowOnlyRemovableOrAllFilesButton, ignoredFilesRemoveIgnoreFlagButton),
 		nil, nil,
 		ignoredFilesListContent,
 	)
@@ -293,17 +266,19 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 				case "darwin":
 					cmd = exec.Command("open", "-R", path)
 				case "linux":
+					// cSpell: words: dbus freedesktop
 					cmd = exec.Command("dbus-send", "--session", "-dest=org.freedesktop.FileManager1", "--type=method_call", "/org/freedesktop/FileManager1", "org.freedesktop.FileManager1.ShowItems", `array:string:"`+strings.ReplaceAll(path, "\"", "\\\"")+`"`, `string:""`)
 				default:
 					cmd = exec.Command("xdg-open", path)
 				}
-				cmd.Run()
+				cmd.Run() //nolint:errcheck
 
 				/* ignore error, windows explorer always returns 1 as exit status
 				// err := cmd.Run()
 				out, err := cmd.CombinedOutput()
 				if err != nil {
-					log.Printf("Error open path: %s\nprogramm output: %s", err, string(out))
+					log.Printf("Error open path: %s", err)
+					log.Printf("Program output: %s", string(out))
 				}
 				*/
 			})
@@ -353,7 +328,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 		}
 	})
 	autoStartCheckBox.SetChecked(autostartEnabled)
-	quitButton := widget.NewButtonWithIcon("Quit Applicaiton", theme.LogoutIcon(), func() {
+	quitButton := widget.NewButtonWithIcon("Quit Application", theme.LogoutIcon(), func() {
 		log.Printf("quit button clicked")
 		a.Quit()
 	})
@@ -399,7 +374,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 		if ti == ignoredFilesTab {
 			ignoredFilesContentError.Hide()
 			go func() {
-				err := rescanIgnoredFiles()
+				err := reScanIgnoredFiles()
 				if err != nil {
 					log.Printf("Error scanning files: %s", err)
 					ignoredFilesContentError.SetText(fmt.Sprintf("error scanning files: %s", err))
@@ -416,7 +391,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 	//tabs.OnSelected()
 	w.SetContent(tabs)
 
-	// SetCloseIntercept => will hide the applicaiton insted of closing it
+	// SetCloseIntercept => will hide the application instead of closing it
 	w.SetCloseIntercept(func() {
 		w.Hide()
 	})

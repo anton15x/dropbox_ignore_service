@@ -29,6 +29,7 @@ func setupTestEnvironment(t *testing.T) (string, *log.Logger, context.Context) {
 
 /**
  * checks is tow filepaths are equal
+ * cspell:disable
  *
  * github acitons fails on macOS because of this error:
  * --- FAIL: TestDropboxIgnorerListenEvents/base_name_and_subfolder_variant_watch_only (0.17s)
@@ -38,6 +39,7 @@ func setupTestEnvironment(t *testing.T) (string, *log.Logger, context.Context) {
  * 	    	Error:      	Not equal:
  * 	    	            	expected: "/var/folders/qv/pdh5wsgn0lq3dp77zj602b5c0000gn/T/TestDropboxIgnorerListenEventsbase_name_and_subfolder_variant_watch_only2776636403/001/my_project/node_modules"
  * 	    	            	actual  : "/private/var/folders/qv/pdh5wsgn0lq3dp77zj602b5c0000gn/T/TestDropboxIgnorerListenEventsbase_name_and_subfolder_variant_watch_only2776636403/001/my_project/node_modules"
+ * cspell: enable
  */
 func equalFilePaths(t *testing.T, dropboxDir, expected, got string) {
 	if expected != got {
@@ -94,12 +96,13 @@ func (f *fileTester) Check() {
 	}
 }
 
-func readChanTimeout[T any](t *testing.T, c chan T, duration time.Duration) (T, bool) {
+func readChanTimeout[T any](t *testing.T, c chan T, duration time.Duration) T {
 	select {
 	case val, ok := <-c:
-		return val, ok
+		require.True(t, ok)
+		return val
 	case <-time.After(duration):
-		t.Errorf("read chan timeout")
+		t.Errorf("read chan timeout of %s reached", duration.String())
 		panic("linter fix")
 	}
 }
@@ -270,7 +273,8 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 
 					if folder.ignored {
 						log.Printf("waiting for folder create event of %s", folder.path)
-						equalFilePaths(t, dropboxDir, folder.path, <-ignoredFilesChan)
+
+						equalFilePaths(t, dropboxDir, folder.path, readChanTimeout(t, ignoredFilesChan, 30*time.Second))
 						isIgnored, err := main.HasDropboxIgnoreFlag(folder.path)
 						require.Nil(t, err)
 						require.Equal(t, folder.ignored && !test.tryRun, isIgnored, folder.path)

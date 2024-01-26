@@ -56,6 +56,7 @@ func mainWithErr() error {
 	var dropboxFolders stringArrayFlags
 	var tryRun bool
 
+	const tryRunAry = "f"
 	const dropboxFolderArg = "f"
 	const logFilenameArg = "log"
 	flag.BoolVar(&tryRun, "t", false, "A try run (does only prints the files, that would get ignored)")
@@ -94,18 +95,23 @@ func mainWithErr() error {
 
 	args := []string{}
 	for _, dropboxFolder := range dropboxFolders {
-		args = append(args, "--"+dropboxFolderArg, dropboxFolder)
+		args = append(args, "-"+dropboxFolderArg, dropboxFolder)
 	}
 	if tryRun {
-		args = append(args, "-t")
+		args = append(args, "-"+tryRunAry)
 	}
 	if logFilename != "" {
-		args = append(args, "--"+logFilenameArg, logFilename)
+		args = append(args, "-"+logFilenameArg, logFilename)
 	}
+	SetAutoStartArgs(args)
 
 	var wg sync.WaitGroup
 	// ctx, ctxStop := context.WithCancel(context.Background())
 	ctx, ctxStop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer func() {
+		ctxStop()
+		wg.Wait()
+	}()
 
 	dropboxFolders, err = getDropboxFoldersEnsured(dropboxFolders)
 	if err != nil {
@@ -145,13 +151,14 @@ func mainWithErr() error {
 
 	initWg.Wait()
 
-	ShowGUI(ctx, dropboxIgnorers, ignoredPathsSet, ignoreFilesSet)
-	ctxStop()
+	err = ShowGUI(ctx, dropboxIgnorers, ignoredPathsSet, ignoreFilesSet)
+	if err != nil {
+		return fmt.Errorf("error showing gui: %s", err)
+	}
 
-	wg.Wait()
-	// if ctx.Err() != nil {
-	// 	log.Printf("Warning: exit early")
-	// }
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		log.Printf("Warning: exit early: %s", ctxErr)
+	}
 
 	return nil
 

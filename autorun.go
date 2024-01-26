@@ -6,6 +6,12 @@ import (
 
 // on windows: symlink at %USERPROFILE%/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup
 
+var autoStartArgs []string
+
+func SetAutoStartArgs(args []string) {
+	autoStartArgs = args
+}
+
 func getAutoStart() autostart.Autostart {
 	return autostart.New(autostart.Options{
 		Label:       "com.github.anton15x.dropbox_ignore_service",
@@ -13,7 +19,7 @@ func getAutoStart() autostart.Autostart {
 		Name:        "Dropbox Ignore Service",
 		Description: "Dropbox Ignore Service support for .dropboxignore file",
 		Mode:        autostart.ModeUser,
-		Arguments:   []string{},
+		Arguments:   autoStartArgs,
 	})
 }
 

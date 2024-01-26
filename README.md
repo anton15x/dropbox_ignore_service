@@ -6,8 +6,6 @@
 
 Dropbox Ignore Service is a command-line utility to exclude files or folders from syncing to dropbox. The files gets specified via the `.dropboxignore` file located in the root of a dropbox folder. 
 
-The application makes it possible, to have folders/files on PC, but not in dropbox cloud.
-
 The motivation for development was to exclude node_modules automatically after such folder get created.
 
 - Cross-platform support (Windows, Linux, and macOS)
@@ -58,7 +56,7 @@ https://help.dropbox.com/de-de/installs/locate-dropbox-folder
 a cli implementation to specify the dropbox path and ignore files
 
 - [sp1thas/dropboxignore](https://github.com/sp1thas/dropboxignore)
-also parses .dropboxignore files more featured but without fs watch
+a cli tool that parses .dropboxignore files more featured but without fs watch
 
 ## used libraries:
 - [rjeczalik/notify](https://github.com/rjeczalik/notify) filesystem change event listener:
@@ -71,4 +69,4 @@ also parses .dropboxignore files more featured but without fs watch
 - allow patters, to prevent possible braking changes, special characters got disabled for now: `*\#[]?!`
   glob reference: https://globster.xyz/
 - nested dropboxignore files (ignore files in sub folders)
-- according to github actions test, ubuntu and darwin may miss fast recursively created folders
+- according to github actions test, ubuntu may miss fast recursively created folders

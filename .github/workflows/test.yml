@@ -13,6 +13,17 @@ on:
 
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node.js for use with actions
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: Spellcheck
+        run: npm run spellcheck
+      - name: Lint
+        run: npm run lint
   test:
     strategy:
       fail-fast: false
@@ -22,7 +33,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: "Testing on ${{ runner.os }}"
-        run: echo test
+        run: echo "running on ${{ runner.os }}"
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
       - name: Install X11 dependencies on MacOS
         if: runner.os == 'macOS'
         run: |
@@ -31,13 +48,6 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update && sudo apt-get install -y xorg-dev
-      - uses: actions/checkout@v3
-      - name: Setup Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v3
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Display Go version
-        run: go version
       - name: Install dependencies
         # run: go get .
         run: go mod download
