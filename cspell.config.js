@@ -6,6 +6,8 @@ module.exports = {
         "coverprofile",
         "dropboxignore",
         "fyne",
+        "golint",
+        "gofmt",
         "Hinterhofer",
         "kichik",
         "LOCALAPPDATA",
