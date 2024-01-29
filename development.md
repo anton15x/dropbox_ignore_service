@@ -12,10 +12,21 @@ create tag (add -f to overwrite old one):
 git tag -a v0.0.1
 ```
 
-pust tag:
+push tag:
 ```bash
 git push origin v0.0.1
 ```
+
+Remove oldtag local:
+```bash
+git tag -d oldtag
+```
+
+delete remote tag:
+```bash
+git push --delete origin oldtag
+```
+
 
 delete tags: https://stackoverflow.com/questions/20076233/replace-remote-tag-with-git
 

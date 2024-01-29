@@ -8,9 +8,9 @@ on:
 jobs:
   build_release:
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -30,7 +30,11 @@ jobs:
       - name: Generate
         run: go generate ./...
       - name: Install Docker
+        if: runner.os == 'Linux'
         run: curl -fsSL https://get.docker.com | bash -s docker
+      - name: Install Docker
+        if: runner.os == 'macOS'
+        run: brew install docker 
       - name: Package for Windows
         if: runner.os == 'Linux'
         run: fyne-cross windows -pull -arch=*
