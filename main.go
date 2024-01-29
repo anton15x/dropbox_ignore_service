@@ -13,10 +13,6 @@ import (
 	"syscall"
 )
 
-// var version = "<VERSION>"
-// var commit = "<COMMIT>"
-// var date = "<DATE>"
-
 func getDropboxFoldersEnsured(cmdFolders []string) ([]string, error) {
 	if len(cmdFolders) > 0 {
 		return cmdFolders, nil
@@ -43,11 +39,21 @@ func (i *stringArrayFlags) Set(value string) error {
 }
 
 func main() {
+	panicked := true
+	defer func() {
+		if panicked {
+			r := recover()
+			log.Printf("panicked: %s", r)
+			os.Exit(2)
+		}
+	}()
+
 	err := mainWithErr()
 	if err != nil {
 		log.Fatalf("Error running program %s", err)
 		os.Exit(1)
 	}
+	panicked = false
 }
 
 func mainWithErr() error {
@@ -85,6 +91,13 @@ func mainWithErr() error {
 		log.SetOutput(io.MultiWriter(logFile, bakWriter))
 	}
 
+	logStringSlice := NewLogStringSlice()
+	{
+		bakWriter := log.Writer()
+		defer log.SetOutput(bakWriter)
+		log.SetOutput(io.MultiWriter(logStringSlice, bakWriter))
+	}
+
 	for i, dropboxFolder := range dropboxFolders {
 		absPath, err := filepath.Abs(dropboxFolder)
 		if err != nil {
@@ -106,6 +119,7 @@ func mainWithErr() error {
 	SetAutoStartArgs(args)
 
 	var wg sync.WaitGroup
+	// TODO: fyne package seems hide signals from us
 	// ctx, ctxStop := context.WithCancel(context.Background())
 	ctx, ctxStop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer func() {
@@ -119,46 +133,26 @@ func mainWithErr() error {
 	}
 	log.Printf("handling dropbox folders: %+v", dropboxFolders)
 
-	var m sync.Mutex
-
 	ignoredPathsSet := NewSortedStringSet()
 	ignoreFilesSet := NewSortedStringSet()
 	dropboxIgnorers := make([]*DropboxIgnorer, len(dropboxFolders))
-	var initWg sync.WaitGroup
+
 	for i, dropboxFolder := range dropboxFolders {
-		i := i
-		dropboxFolder := dropboxFolder
+		ignorer, err := NewDropboxIgnorer(dropboxFolder, tryRun, log.Default(), ctx, &wg, ignoredPathsSet, ignoreFilesSet)
+		if err != nil {
+			return fmt.Errorf("error creating dropbox ignorer for %s: %w", dropboxFolder, err)
+		}
+		dropboxIgnorers[i] = ignorer
 
-		initWg.Add(1)
-		go func() {
-			defer initWg.Done()
-
-			m.Lock()
-			defer m.Unlock()
-
-			ignorer, err := NewDropboxIgnorer(dropboxFolder, tryRun, log.Default(), ctx, &wg, ignoredPathsSet, ignoreFilesSet)
-			if err != nil {
-				log.Printf("Error creating dropbox ignorer for %s: %s", dropboxFolder, err)
-
-				return
-			}
-			dropboxIgnorers[i] = ignorer
-
-			log.Printf("listening for events in dropbox %s", dropboxFolder)
-			ignorer.ListenForEvents(nil)
-		}()
+		log.Printf("listening for events in dropbox %s", dropboxFolder)
+		ignorer.ListenForEvents(nil)
 	}
 
-	initWg.Wait()
-
-	err = ShowGUI(ctx, dropboxIgnorers, ignoredPathsSet, ignoreFilesSet)
+	err = ShowGUI(ctx, dropboxIgnorers, ignoredPathsSet, ignoreFilesSet, logStringSlice)
 	if err != nil {
-		return fmt.Errorf("error showing gui: %s", err)
+		return fmt.Errorf("error showing gui: %w", err)
 	}
-
-	if ctxErr := ctx.Err(); ctxErr != nil {
-		log.Printf("Warning: exit early: %s", ctxErr)
-	}
+	log.Printf("gui exited")
 
 	return nil
 

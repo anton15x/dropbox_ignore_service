@@ -36,7 +36,7 @@ func EnableAutoStart() error {
 	// app.StdOutPath()
 	// app.StdErrPath()
 
-	// TODO: logging?
+	// TODO: handle logging?
 
 	return nil
 }

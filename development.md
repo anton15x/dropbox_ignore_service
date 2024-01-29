@@ -1,6 +1,24 @@
 /* cSpell:disable */
 
 # development
+## commit release
+list all tags:
+```bash
+git tag
+```
+
+create tag (add -f to overwrite old one):
+```bash
+git tag -a v0.0.1
+```
+
+pust tag:
+```bash
+git push origin v0.0.1
+```
+
+delete tags: https://stackoverflow.com/questions/20076233/replace-remote-tag-with-git
+
 ## building:
 ```bash
 go mod tidy
@@ -30,6 +48,18 @@ fyne-cross windows
 fyne-cross linux
 fyne-cross linux -arch=arm # raspberry
 fyne-cross darwin
+
+for file in fyne-cross/dist/*/* ; do echo ${file} ; done
+for file in fyne-cross/dist/*/* ; do echo $(echo $file | sed -n "s/dist/test/p") ; done
+for file in fyne-cross/dist/*/* ; do echo $(echo $file | sed -n "s/dist\//test/p") ; done
+for file in fyne-cross/dist/*/* ; do echo $(echo $file | sed -n -E "s/dist\/([^\/]+)\/([^\/]+)$/test/p") ; done
+for file in fyne-cross/dist/*/* ; do echo "$(echo $file | sed -n -E "s/fyne-cross\/dist\/([^\/]+)\/([^\/.]+)([^\/]+)$/\2_\1\3/p")" ; done
+for file in fyne-cross/dist/*/* ; do echo "$(echo $file | sed -n -E "s/fyne-cross\/dist\/([^\/]+)\/([^\/.]+)([^\/]+)$/\2_\1\3/p")" ; done
+RELEASE_VERSION="v1.2.3"
+for file in fyne-cross/dist/*/* ; do echo "$(echo $file | sed -n -E "s/fyne-cross\/dist\/([^\/]+)\/([^\/.]+)([^\/]+)$/\2_${RELEASE_VERSION}_\1\3/p")" ; done
+
+rm -r pkg-dist; mkdir pkg-dist
+for file in fyne-cross/dist/*/* ; do cp "$file" "pkg-dist/$(echo $file | sed -n -E "s/fyne-cross\/dist\/([^\/]+)\/([^\/.]+)([^\/]+)$/\2_${RELEASE_VERSION}_\1\3/p")" ; done
 
 
 // https://www.dropbox.com/install-linux

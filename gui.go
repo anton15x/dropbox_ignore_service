@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -21,11 +22,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-//go:generate fyne bundle -o bundled_icon_generated.go assets/icon.png
-//go:generate fyne bundle -o bundled_icon_generated.go -append assets/icon.ico
-// fyne bundle  --help
-
-func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPathsSet *SortedStringSet, ignoreFilesSet *SortedStringSet) error {
+func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPathsSet *SortedStringSet, ignoreFilesSet *SortedStringSet, logStringSlice *logStringSliceStruct) error {
 	guiCtx := ctx
 
 	// FyneApp.toml has id and icon set => fyne build adds metadata for us
@@ -33,8 +30,24 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 	// fyne package --release
 	a := app.New()
 	// a := app.NewWithID("dropbox_ignore_service")
-	// a.SetIcon(resourceIconIco)
-	w := a.NewWindow(a.Metadata().Name)
+	// w := a.NewWindow(a.Metadata().Name)
+	appNameToUserDisplay := func() string {
+		// return strings.Title(strings.ReplaceAll(a.Metadata().Name, "_", ""))
+		ret := ""
+		origName := a.Metadata().Name
+		for i, r := range origName {
+			if r == '_' {
+				continue
+			}
+			if i == 0 || origName[i-1] == '_' {
+				ret += strings.ToUpper(string(r))
+			} else {
+				ret += string(r)
+			}
+		}
+		return ret
+	}
+	w := a.NewWindow(appNameToUserDisplay())
 	w.Resize(fyne.NewSize(1200, 800))
 
 	ignoredPathsSetList := widget.NewList(
@@ -244,6 +257,9 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 	)
 	ignoredFilesTab := container.NewTabItemWithIcon("Ignored Files", theme.VisibilityOffIcon(), ignoredFilesContent)
 
+	for _, d := range dropboxIgnorers {
+		ignoreFilesSet.Add(filepath.Join(d.dropboxPath, DropboxIgnoreFilename))
+	}
 	ignoreFilesSetList := widget.NewList(
 		func() int {
 			return len(ignoreFilesSet.Values)
@@ -252,14 +268,30 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 			var button *widget.Button
 			button = widget.NewButton("", func() {
 				path := button.Text
+
+				// create file if it not exists
+				_, err := os.Stat(path)
+				if err != nil {
+					if !os.IsNotExist(err) {
+						log.Printf("Error checking if path %s exists: %s", path, err)
+						return
+					} else {
+						err := os.WriteFile(path, []byte{}, os.ModePerm)
+						if err != nil {
+							log.Printf("Error creating dropbox ignore file %s: %s", path, err)
+						}
+					}
+				}
+
 				/*
 					err := open.Run(path)
 					if err != nil {
 						log.Printf("Error open path %s: %s", path, err)
 					}
 				*/
-				var cmd *exec.Cmd
+				// open file in explorer
 				// https://askubuntu.com/questions/133597/reveal-file-in-file-explorer
+				var cmd *exec.Cmd
 				switch runtime.GOOS {
 				case "windows":
 					cmd = exec.Command("explorer", "/select,", path)
@@ -305,6 +337,51 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 	)
 	dropboxIgnoreFileTab := container.NewTabItemWithIcon(".dropboxignore File", theme.FileTextIcon(), dropboxIgnoreFileContent)
 
+	logStringSliceList := widget.NewList(
+		func() int {
+			return len(logStringSlice.data)
+		},
+		func() fyne.CanvasObject {
+			return widget.NewLabel("")
+		},
+		func(i widget.ListItemID, o fyne.CanvasObject) {
+			values := logStringSlice.data
+			i = len(values) - i - 1
+			data := ""
+			if i < len(values) {
+				data = values[i]
+			}
+
+			label := o.(*widget.Label)
+			label.SetText(data)
+		},
+	)
+	logStringSliceListRefreshDebounced := debounce(func() {
+		logStringSliceList.Refresh()
+	}, time.Second/60)
+	logStringSlice.AddChangeEventListener(func() {
+		logStringSliceListRefreshDebounced()
+	})
+	var logsCopyButton *widget.Button
+	logsCopyButton = widget.NewButton("Copy Log to clipboard", func() {
+		w.Clipboard().SetContent(logStringSlice.String())
+
+		bakText := logsCopyButton.Text
+		logsCopyButton.SetText(bakText + " copied!")
+		go func() {
+			time.Sleep(3 * time.Second)
+			logsCopyButton.SetText(bakText)
+		}()
+
+	})
+	logsContent := container.NewBorder(
+		nil,
+		logsCopyButton,
+		nil, nil,
+		logStringSliceList,
+	)
+	logsTab := container.NewTabItemWithIcon("Logs", theme.FileTextIcon(), logsContent)
+
 	autostartEnabled, err := IsAutoStartEnabled()
 	if err != nil {
 		return fmt.Errorf("error checking if autostart is enabled: %w", err)
@@ -338,6 +415,11 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 		nil, nil,
 		container.NewVBox(
 			autoStartCheckBox,
+			container.NewBorder(
+				nil,
+				widget.NewLabel(appNameToUserDisplay()+" "+a.Metadata().Version),
+				nil, nil,
+			),
 		),
 	)
 	// settingsTab := container.NewTabItem("Settings", settingsContent)
@@ -347,6 +429,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 		homeTab,
 		ignoredFilesTab,
 		dropboxIgnoreFileTab,
+		logsTab,
 		settingsTab,
 	)
 
@@ -357,6 +440,10 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 			}),
 			fyne.NewMenuItem("Ignored Files", func() {
 				tabs.Select(ignoredFilesTab)
+				w.Show()
+			}),
+			fyne.NewMenuItem("Logs", func() {
+				tabs.Select(logsTab)
 				w.Show()
 			}),
 			fyne.NewMenuItem("Settings", func() {
@@ -387,23 +474,22 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 			}
 		}
 	}
-	// tabs.SetTabLocation(container.TabLocationLeading)
-	//tabs.OnSelected()
 	w.SetContent(tabs)
 
 	// SetCloseIntercept => will hide the application instead of closing it
 	w.SetCloseIntercept(func() {
+		log.Printf("Close intercept: hide window")
 		w.Hide()
 	})
 	go func() {
 		<-guiCtx.Done()
 		a.Quit()
 	}()
-	go func() {
-		time.Sleep(time.Second)
-		w.Hide()
-	}()
+
+	// run only launches the application without showing window
 	a.Run()
+
+	// launches the application ans shows the window
 	// w.ShowAndRun()
 
 	return nil

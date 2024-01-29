@@ -1,4 +1,5 @@
 *.exe
+*.log
 *_generated.go
 fyne-cross
 node_modules
