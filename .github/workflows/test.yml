@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 20.x
       - name: Setup Go 1.21.x
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: 1.21.x
       - name: Install Dependencies
@@ -45,7 +45,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
       - name: Install X11 dependencies on MacOS
