@@ -61,11 +61,14 @@ func mainWithErr() error {
 	var logFilename string
 	var dropboxFolders stringArrayFlags
 	var tryRun bool
+	var hideGUI bool
 
-	const tryRunAry = "f"
+	const hideGUIArg = "hide-gui"
+	const tryRunArg = "f"
 	const dropboxFolderArg = "f"
 	const logFilenameArg = "log"
 	flag.BoolVar(&tryRun, "t", false, "A try run (does only prints the files, that would get ignored)")
+	flag.BoolVar(&hideGUI, hideGUIArg, false, "If true, the GUI will not get shown at start (use at autostart with windows)")
 	flag.StringVar(&logFilename, logFilenameArg, "", "The log file location (default: system log/stdout)")
 	flag.Var(&dropboxFolders, dropboxFolderArg, "the path to the dropbox root folder (may be specified multiple times)")
 	flag.Parse()
@@ -110,8 +113,9 @@ func mainWithErr() error {
 	for _, dropboxFolder := range dropboxFolders {
 		args = append(args, "-"+dropboxFolderArg, dropboxFolder)
 	}
+	args = append(args, "-"+hideGUIArg)
 	if tryRun {
-		args = append(args, "-"+tryRunAry)
+		args = append(args, "-"+tryRunArg)
 	}
 	if logFilename != "" {
 		args = append(args, "-"+logFilenameArg, logFilename)
@@ -148,7 +152,7 @@ func mainWithErr() error {
 		ignorer.ListenForEvents(nil)
 	}
 
-	err = ShowGUI(ctx, dropboxIgnorers, ignoredPathsSet, ignoreFilesSet, logStringSlice)
+	err = ShowGUI(ctx, dropboxIgnorers, hideGUI, ignoredPathsSet, ignoreFilesSet, logStringSlice)
 	if err != nil {
 		return fmt.Errorf("error showing gui: %w", err)
 	}

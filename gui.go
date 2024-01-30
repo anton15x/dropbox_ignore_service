@@ -22,7 +22,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPathsSet *SortedStringSet, ignoreFilesSet *SortedStringSet, logStringSlice *logStringSliceStruct) error {
+func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI bool, ignoredPathsSet *SortedStringSet, ignoreFilesSet *SortedStringSet, logStringSlice *logStringSliceStruct) error {
 	guiCtx := ctx
 
 	// FyneApp.toml has id and icon set => fyne build adds metadata for us
@@ -44,6 +44,9 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 			} else {
 				ret += string(r)
 			}
+		}
+		if ext := filepath.Ext(ret); strings.EqualFold(ext, ".exe") {
+			ret, _ = strings.CutSuffix(ret, ext)
 		}
 		return ret
 	}
@@ -486,11 +489,13 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, ignoredPath
 		a.Quit()
 	}()
 
-	// run only launches the application without showing window
-	a.Run()
-
-	// launches the application ans shows the window
-	// w.ShowAndRun()
+	if hideGUI {
+		// run only launches the application without showing window
+		a.Run()
+	} else {
+		// launches the application ans shows the window
+		w.ShowAndRun()
+	}
 
 	return nil
 }
