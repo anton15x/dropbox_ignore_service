@@ -48,7 +48,8 @@ jobs:
       - name: Install X11 dependencies on Linux
         if: runner.os == 'Linux' && inputs.install-dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y xorg-dev
+          sudo apt-get update
+          sudo apt-get install -y xorg-dev
       - name: Install dependencies
         # run: go get .
         run: go mod download

@@ -35,7 +35,7 @@ jobs:
       - name: Install Docker
         if: runner.os == 'macOS'
         run: |
-          brew install docker |
+          brew install docker
           colima start
       - name: Package for Windows
         if: runner.os == 'Linux'
@@ -51,8 +51,7 @@ jobs:
       - name: PreparePackages
         run: |
           mkdir pkg-dist
-          for file in fyne-cross/dist/*/* ; do cp "$file" "pkg-dist/$(echo $file | sed -n -E "s/fyne-cross\/dist\/([^\/]+)\/([^\/.]+)([^\/]+)$/\2_${{env.RELEASE_VERSION}}_\1\3/p")" ; done |
-          echo "done"
+          for file in fyne-cross/dist/*/* ; do cp "$file" "pkg-dist/$(echo $file | sed -n -E "s/fyne-cross\/dist\/([^\/]+)\/([^\/.]+)([^\/]+)$/\2_${{env.RELEASE_VERSION}}_\1\3/p")" ; done
       - name: Uplaod artifacts
         uses: actions/upload-artifact@v4
         with:
