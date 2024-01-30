@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - v*
+    #tags:
+    #  - v*
 
 jobs:
   build_release:
@@ -37,15 +37,15 @@ jobs:
         run: brew install docker 
       - name: Package for Windows
         if: runner.os == 'Linux'
-        run: fyne-cross windows -pull -arch=*
+        run: fyne-cross windows -arch=*
       - name: Package for Linux
         if: runner.os == 'Linux'
-        run: fyne-cross linux -pull -arch=*
+        run: fyne-cross linux -arch=*
       - name: Package for MacOS
         # build for macOS not working in linux/windwos, error message:
         # [✗] macOSX SDK path is mandatory
         if: runner.os == 'macOS'
-        run: fyne-cross darwin -pull -arch=*
+        run: fyne-cross darwin -arch=*
       - name: PreparePackages
         run: |
           mkdir pkg-dist
