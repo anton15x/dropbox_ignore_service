@@ -79,7 +79,7 @@ jobs:
     needs:
       - lint
       - test
-    if: github.ref_type == 'tag' && startsWith(github.ref,'v')
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     strategy:
       fail-fast: true
       matrix:
