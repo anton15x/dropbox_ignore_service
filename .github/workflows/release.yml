@@ -34,7 +34,9 @@ jobs:
         run: curl -fsSL https://get.docker.com | bash -s docker
       - name: Install Docker
         if: runner.os == 'macOS'
-        run: brew install docker 
+        run: |
+          brew install docker |
+          colima start
       - name: Package for Windows
         if: runner.os == 'Linux'
         run: fyne-cross windows -arch=*
