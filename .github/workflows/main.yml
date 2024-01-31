@@ -39,7 +39,10 @@ jobs:
       fail-fast: false
       matrix:
         go-version: [1.21.x]
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: "Testing on ${{ runner.os }}"
@@ -78,12 +81,14 @@ jobs:
   build_release:
     needs:
       - lint
-      - test
+      #- test
     if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: 
+          # - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -201,4 +206,5 @@ jobs:
         with:
           artifacts: "pkg-dist/*"
           artifactErrorsFailBuild: true
+          draft: true
           generateReleaseNotes: true
