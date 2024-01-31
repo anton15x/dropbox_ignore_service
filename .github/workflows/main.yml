@@ -81,13 +81,13 @@ jobs:
   build_release:
     needs:
       - lint
-      #- test
+      - test
     if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     strategy:
       fail-fast: true
       matrix:
         os: 
-          # - ubuntu-latest
+          - ubuntu-latest
           - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
@@ -206,5 +206,5 @@ jobs:
         with:
           artifacts: "pkg-dist/*"
           artifactErrorsFailBuild: true
-          draft: true
+          # draft: true
           generateReleaseNotes: true

@@ -67,10 +67,10 @@ func mainWithErr() error {
 	const tryRunArg = "f"
 	const dropboxFolderArg = "f"
 	const logFilenameArg = "log"
+	flag.StringVar(&logFilename, logFilenameArg, "", "The log file location (default: no file logging)")
+	flag.Var(&dropboxFolders, dropboxFolderArg, "the path to the dropbox root folder, may be specified multiple times (skips reading dropbox config file)")
+	flag.BoolVar(&hideGUI, hideGUIArg, false, "If true, the GUI will not get shown at start (used at autostart with the operation system)")
 	flag.BoolVar(&tryRun, "t", false, "A try run (does only prints the files, that would get ignored)")
-	flag.BoolVar(&hideGUI, hideGUIArg, false, "If true, the GUI will not get shown at start (use at autostart with windows)")
-	flag.StringVar(&logFilename, logFilenameArg, "", "The log file location (default: system log/stdout)")
-	flag.Var(&dropboxFolders, dropboxFolderArg, "the path to the dropbox root folder (may be specified multiple times)")
 	flag.Parse()
 
 	if logFilename != "" {

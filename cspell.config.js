@@ -8,7 +8,9 @@ module.exports = {
         "fyne",
         "golint",
         "gofmt",
+        "goweight",
         "Hinterhofer",
+        "jondot",
         "kichik",
         "LOCALAPPDATA",
         "nolint",
@@ -21,6 +23,8 @@ module.exports = {
         "unignoreable", // not a correct word...
         "USERPROFILE",
         "xattr",
+        "xorg",
+        "xquartz",
     ],
     "ignorePaths": [
         ".git",
