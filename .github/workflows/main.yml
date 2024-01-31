@@ -112,19 +112,59 @@ jobs:
           colima start
       - name: Package for Windows
         if: runner.os == 'Linux'
-        run: fyne-cross windows -arch=*
+        run: |
+          fyne-cross windows -arch=*
       - name: Package for Linux
         if: runner.os == 'Linux'
-        run: fyne-cross linux -arch=*
+        run: |
+          fyne-cross linux -arch=*
+          # cp -r fyne-cross fynebak
+          # rm -r fyne-cross && cp -r fynebak fyne-cross
+          for folder in fyne-cross/dist/linux-*/ ; do
+            echo "folder: $folder"
+            pushd "$folder"
+            echo "folder with a .tar.xz file:"
+            ls -la .
+            for file in ./* ; do
+              echo "file to extract: $file"
+              tar -xf "$file" usr/local/bin/
+              rm "./$file"
+              mv usr/local/bin/* .
+              rm -r ./usr
+            done
+            echo "folder that should contain single executable:"
+            ls -la .
+            for file in ./* ; do
+              echo "file to zip: $file"
+              zip -r "$file.zip" "$file"
+              rm "./$file"
+            done
+            popd
+          done
       - name: Package for MacOS
         # build for macOS not working in linux/windwos, error message:
         # [✗] macOSX SDK path is mandatory
         if: runner.os == 'macOS'
-        run: fyne-cross darwin -arch=*
+        run: |
+          fyne-cross darwin -arch=*
+          # zip instruction: https://superuser.com/a/119661
+          for folder in fyne-cross/dist/darwin-* ; do
+            echo "folder: $folder"
+            pushd "$folder"
+            echo "folder with a .app folder:"
+            ls -la .
+            for appfolder in ./* ; do
+              zip -r "$appfolder.zip" "$appfolder"
+              rm -rf "./$appfolder"
+            done
+            popd
+          done
       - name: PreparePackages
         run: |
           mkdir pkg-dist
-          for file in fyne-cross/dist/*/* ; do cp -r "$file" "pkg-dist/$(echo $file | sed -n -E "s/fyne-cross\/dist\/([^\/]+)\/([^\/.]+)([^\/]+)$/\2_${{ github.ref_name }}_\1\3/p")" ; done
+          for file in fyne-cross/dist/*/* ; do
+            cp "$file" "pkg-dist/$(echo $file | sed -n -E "s/fyne-cross\/dist\/([^\/]+)\/([^\/.]+)([^\/]+)$/\2_${{ github.ref_name }}_\1\3/p")"
+          done
       - name: Uplaod artifacts
         uses: actions/upload-artifact@v4
         with:

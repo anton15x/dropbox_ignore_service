@@ -19,12 +19,19 @@ git push origin v0.0.1
 
 Remove oldtag local:
 ```bash
-git tag -d oldtag
+git tag -d v0.0.1
 ```
 
 delete remote tag:
 ```bash
-git push --delete origin oldtag
+git push --delete origin v0.0.1
+```
+
+all in one, delete tag local and remote and push again:
+```bash
+MY_GIT_TAG="v0.0.1"
+
+git push --delete origin "$MY_GIT_TAG" && git tag -af "$MY_GIT_TAG" && git push origin "$MY_GIT_TAG" && echo "successfuly deleted tag $MY_GIT_TAG"
 ```
 
 
