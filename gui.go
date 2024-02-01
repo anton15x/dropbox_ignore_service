@@ -76,7 +76,10 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	updateHomeTopLabel := func() {
 		homeTopLabel.SetText(fmt.Sprintf("Ignoring %d elements", len(ignoredPathsSet.Values)))
 	}
-	ignoredPathsSet.AddChangeEventListener(updateHomeTopLabel)
+	ignoredPathsSet.AddChangeEventListener(Debounce(func() {
+		updateHomeTopLabel()
+		ignoredPathsSetList.Refresh()
+	}, time.Second/60))
 	updateHomeTopLabel()
 	homeContent := container.NewBorder(
 		homeTopLabel,
@@ -132,7 +135,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		},
 	)
 
-	ignoredFilesListContentRefreshDebounced := debounce(func() {
+	ignoredFilesListContentRefreshDebounced := Debounce(func() {
 		ignoredFilesListContent.Refresh()
 	}, time.Second/60)
 
@@ -161,7 +164,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	ignoredFileNames.AddRemoveEventListener(func(s string) {
 		checkedFileNames.Remove(s)
 	})
-	ignoredFilesProgressCurrentPathRefreshDebounced := debounce(func() {
+	ignoredFilesProgressCurrentPathRefreshDebounced := Debounce(func() {
 		ignoredFilesProgressCurrentPath.Refresh()
 	}, time.Second/60)
 	var ignoredFilesCtxStop context.CancelFunc
@@ -331,9 +334,9 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			button.SetText(name)
 		},
 	)
-	ignoreFilesSet.AddChangeEventListener(func() {
+	ignoreFilesSet.AddChangeEventListener(Debounce(func() {
 		ignoreFilesSetList.Refresh()
-	})
+	}, time.Second/60))
 	dropboxIgnoreFileContent := container.NewBorder(
 		nil, nil, nil, nil,
 		ignoreFilesSetList,
@@ -359,7 +362,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			label.SetText(data)
 		},
 	)
-	logStringSliceListRefreshDebounced := debounce(func() {
+	logStringSliceListRefreshDebounced := Debounce(func() {
 		logStringSliceList.Refresh()
 	}, time.Second/60)
 	logStringSlice.AddChangeEventListener(func() {
