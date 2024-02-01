@@ -1,14 +1,19 @@
 package main
 
 import (
+	"runtime"
 	"sync"
 	"time"
 )
 
-func debounce(f func(), t time.Duration) func() {
+func Debounce(f func(), t time.Duration) func() {
+	return DebounceWithSleepFunc(f, func() { time.Sleep(t) })
+}
+
+func DebounceWithSleepFunc(f func(), sleep func()) func() {
 	var m sync.Mutex
 	called := false
-	lastF := f
+	var lastF func()
 
 	return func() {
 		m.Lock()
@@ -16,24 +21,26 @@ func debounce(f func(), t time.Duration) func() {
 
 		if called {
 			lastF = f
+			runtime.Gosched()
 			return
 		}
 
 		called = true
 		f()
 		go func() {
-			for {
-				time.Sleep(t)
+			for called {
+				sleep()
 
 				func() {
 					m.Lock()
 					defer m.Unlock()
 
-					if called {
-						lastF()
+					if lastF != nil {
+						fToExecute := lastF
+						lastF = nil
+						fToExecute()
 					} else {
 						called = false
-						return
 					}
 				}()
 			}

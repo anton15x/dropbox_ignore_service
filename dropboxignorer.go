@@ -196,7 +196,7 @@ func (i *DropboxIgnorer) ListenForEvents(cb chan string) {
 						}
 					}
 				}
-				if event == notify.Remove {
+				if event == notify.Remove || event == notify.Rename {
 					// sometimes event order is incorrect => stat and check if file is created
 					// e.g. fast delete file and create is again could swap the order of events
 					_, err := os.Stat(path)
