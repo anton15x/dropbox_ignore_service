@@ -1,8 +1,11 @@
+<p align="center">
+<img alt="application icon" src="assets/icon.png" width="200">
+</p>
+
 # Dropbox Ignore Service
 
-[![Go Reference](https://pkg.go.dev/badge/pkg.go.dev/github.com/anton15x/dropbox_ignore_service.svg)](https://pkg.go.dev/pkg.go.dev/github.com/anton15x/dropbox_ignore_service)
-[![Test Status](https://github.com/anton15x/dropbox_ignore_service/actions/workflows/test.yml/badge.svg)](https://github.com/anton15x/dropbox_ignore_service/actions?query=workflow%3ATest))
-
+[![Go Reference](https://pkg.go.dev/badge/pkg.go.dev/github.com/anton15x/dropbox_ignore_service.svg)](https://pkg.go.dev/github.com/anton15x/dropbox_ignore_service)
+[![Test Status](https://github.com/anton15x/dropbox_ignore_service/actions/workflows/main.yml/badge.svg)](https://github.com/anton15x/dropbox_ignore_service/actions/workflows/main.yml)
 
 Dropbox Ignore Service is tool to exclude files or folders from syncing to dropbox. The files gets specified via the `.dropboxignore` file located in the root of a dropbox folder. 
 
