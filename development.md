@@ -74,6 +74,12 @@ go test ./...
 go test -run ^TestIgnoreFlagModify$ github.com/anton15x/dropbox_ignore_service
 ```
 
+## running linter:
+https://golangci-lint.run/usage/install/
+```bash
+golangci-lint run ./...
+```
+
 ## read xattr with cli tools:
 windows:
 https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/get-content?view=powershell-7.3
