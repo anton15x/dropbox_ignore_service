@@ -6,6 +6,7 @@ module.exports = {
         "coverprofile",
         "dropboxignore",
         "fyne",
+        "golangci",
         "golint",
         "gofmt",
         "goweight",

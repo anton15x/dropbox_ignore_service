@@ -5,6 +5,7 @@ on:
     #tags:
     #  - v*
   pull_request:
+    types: [opened, reopened]
   workflow_dispatch:
     inputs:
       debug_enabled:
