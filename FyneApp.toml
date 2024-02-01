@@ -1,0 +1,8 @@
+Website = "https://github.com/anton15x/dropbox_ignore_service"
+
+[Details]
+  Icon = "assets/icon.png"
+  Name = "dropbox_ignore_service"
+  ID = "com.github.anton15x.dropbox_ignore_service"
+  Version = "0.0.1"
+  Build = 1

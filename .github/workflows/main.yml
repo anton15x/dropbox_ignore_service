@@ -1,0 +1,211 @@
+name: Main Workflow
+
+on:
+  push:
+    #tags:
+    #  - v*
+  pull_request:
+    types: [opened, reopened]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js for use with actions
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: Setup Go 1.21.x
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21.x
+      - name: Install Dependencies
+        run: npm ci
+      - name: Spellcheck
+        run: npm run spellcheck
+      - name: Lint
+        run: npm run lint
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: [1.21.x]
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: "Testing on ${{ runner.os }}"
+        run: echo "running on ${{ runner.os }}"
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install X11 dependencies on MacOS
+        if: runner.os == 'macOS'
+        run: |
+          brew install --cask xquartz
+      - name: Install X11 dependencies on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xorg-dev
+      - name: Install dependencies
+        #run: go get .
+        run: go mod download
+      - name: Install fyne
+        run: go install fyne.io/fyne/v2/cmd/fyne@latest
+      - name: Generate
+        run: go generate ./...
+      - name: Test with Go
+        run: go test ./...
+      #- name: Build
+      #  # run: go build -v ./...
+      #  run: fyne package --release
+      - name: Setup tmate session for debbuging action
+        if: ${{ inputs.debug_enabled }}
+        uses: mxschmitt/action-tmate@v3
+
+  build_release:
+    needs:
+      - lint
+      - test
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    strategy:
+      fail-fast: true
+      matrix:
+        os: 
+          - ubuntu-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Print release version
+        run: echo "${{ github.ref_name }}" | grep -E "^v[0-9.]+$"
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21.x
+      - name: Install dependencies
+        run: go mod download
+      - name: Install fyne
+        run: go install fyne.io/fyne/v2/cmd/fyne@latest
+      - name: Install fyne-cross
+        run: go install github.com/fyne-io/fyne-cross@latest
+      - name: Generate
+        run: go generate ./...
+      - name: Install Docker
+        if: runner.os == 'Linux'
+        run: curl -fsSL https://get.docker.com | bash -s docker
+      - name: Install Docker
+        if: runner.os == 'macOS'
+        run: |
+          brew install docker
+          colima start
+      - name: Package for Windows
+        if: runner.os == 'Linux'
+        run: |
+          fyne-cross windows -arch=*
+      - name: Package for Linux
+        if: runner.os == 'Linux'
+        run: |
+          fyne-cross linux -arch=*
+          # cp -r fyne-cross fynebak
+          # rm -r fyne-cross && cp -r fynebak fyne-cross
+          for folder in fyne-cross/dist/linux-*/ ; do
+            echo "folder: $folder"
+            pushd "$folder"
+            echo "folder with a .tar.xz file:"
+            ls -la .
+            for file in ./* ; do
+              echo "file to extract: $file"
+              tar -xf "$file" usr/local/bin/
+              rm "./$file"
+              mv usr/local/bin/* .
+              rm -r ./usr
+            done
+            echo "folder that should contain single executable:"
+            ls -la .
+            for file in ./* ; do
+              echo "file to zip: $file"
+              zip -r "$file.zip" "$file"
+              rm "./$file"
+            done
+            popd
+          done
+      - name: Package for MacOS
+        # build for macOS not working in linux/windwos, error message:
+        # [✗] macOSX SDK path is mandatory
+        if: runner.os == 'macOS'
+        run: |
+          fyne-cross darwin -arch=*
+          # zip instruction: https://superuser.com/a/119661
+          for folder in fyne-cross/dist/darwin-* ; do
+            echo "folder: $folder"
+            pushd "$folder"
+            echo "folder with a .app folder:"
+            ls -la .
+            for appfolder in ./* ; do
+              zip -r "$appfolder.zip" "$appfolder"
+              rm -rf "./$appfolder"
+            done
+            popd
+          done
+      - name: PreparePackages
+        run: |
+          mkdir pkg-dist
+          for file in fyne-cross/dist/*/* ; do
+            cp "$file" "pkg-dist/$(echo $file | sed -n -E "s/fyne-cross\/dist\/([^\/]+)\/([^\/.]+)([^\/]+)$/\2_${{ github.ref_name }}_\1\3/p")"
+          done
+      - name: Uplaod artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "builds_${{runner.os}}"
+          path: pkg-dist/*
+          if-no-files-found: error
+
+  create_release:
+    needs:
+      - build_release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: builds_*
+          merge-multiple: true
+          path: pkg-dist
+      - name: List Files
+        run: ls -laR .
+      #- name: Release
+      #  uses: softprops/action-gh-release@v1
+      #  with:
+      #    draft: true
+      #    append_body: true
+      #    generate_release_notes: true
+      #    files: |
+      #      pkg-dist/*
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "pkg-dist/*"
+          artifactErrorsFailBuild: true
+          # draft: true
+          generateReleaseNotes: true

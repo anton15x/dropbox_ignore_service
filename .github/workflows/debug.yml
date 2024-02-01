@@ -1,0 +1,61 @@
+name: "Debug"
+
+on: 
+  workflow_dispatch:
+    inputs:
+      os:
+        type: choice
+        description: Which OS
+        options:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        required: true
+      go-version:
+        type: string
+        description: "Go version"
+        default: "1.21.x"
+      node-version:
+        type: string
+        description: "Node version"
+        default: "20.x"
+      install-dependencies:
+        type: boolean
+        description: "Install Dependencies"
+        default: true
+
+
+jobs:
+  debug:
+    runs-on: "${{ inputs.os }}"
+    steps:
+      - name: "Testing on ${{ runner.os }}"
+        run: echo "running on ${{ runner.os }}"
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go ${{ inputs.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+      - name: Setup Node.js ${{ inputs.node-version }} for use with actions
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: Install X11 dependencies on MacOS
+        if: runner.os == 'macOS' && inputs.install-dependencies
+        run: |
+          brew install --cask xquartz
+      - name: Install X11 dependencies on Linux
+        if: runner.os == 'Linux' && inputs.install-dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xorg-dev
+      - name: Install dependencies
+        # run: go get .
+        run: go mod download
+      - name: Install fyne
+        run: go install fyne.io/fyne/v2/cmd/fyne@latest
+      - name: Generate
+        run: go generate ./...
+      - name: Setup tmate session for debbuging action
+        uses: mxschmitt/action-tmate@v3

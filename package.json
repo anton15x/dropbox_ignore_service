@@ -1,0 +1,29 @@
+{
+  "name": "dropbox_ignore_service",
+  "version": "0.0.1",
+  "description": "Dropbox Ignore Service: A background service for Dropbox. It ignores files specified in a .dropboxignore file, instantly reacting to file system changes. GUI available via system tray.",
+  "main": "cspell.config.js",
+  "scripts": {
+    "lint": "node golint.js",
+    "spellcheck": "cspell lint .",
+    "test": "npm run spellcheck && npm run test_go",
+    "test_go": "go test ./..."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anton15x/dropbox_ignore_service.git"
+  },
+  "keywords": [
+    "dropbox",
+    "ignore"
+  ],
+  "author": "Anton Hinterhofer",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/anton15x/dropbox_ignore_service/issues"
+  },
+  "homepage": "https://github.com/anton15x/dropbox_ignore_service#readme",
+  "devDependencies": {
+    "cspell": "^8.3.2"
+  }
+}
