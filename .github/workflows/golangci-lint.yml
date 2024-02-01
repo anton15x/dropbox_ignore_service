@@ -57,7 +57,8 @@ jobs:
           # skip-cache: true
 
           # Optional: if set to true, then the action won't cache or restore ~/go/pkg.
-          # skip-pkg-cache: true
+          skip-pkg-cache: true
+          # skip pkg-cache because of conflicts of files created by go mod download
 
           # Optional: if set to true, then the action won't cache or restore ~/.cache/go-build.
           # skip-build-cache: true
