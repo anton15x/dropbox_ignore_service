@@ -48,7 +48,7 @@ go generate ./...
 fyne package --release
 ./dropbox_ignore_service
 
-go build && ./dropbox_ignore_service
+fyne package && ./dropbox_ignore_service
 ```
 
 ### cross build:

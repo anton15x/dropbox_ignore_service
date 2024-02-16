@@ -22,6 +22,26 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+func appNameToUserDisplay(a fyne.App) string {
+	// return strings.Title(strings.ReplaceAll(a.Metadata().Name, "_", ""))
+	ret := ""
+	origName := a.Metadata().Name
+	for i, r := range origName {
+		if r == '_' {
+			continue
+		}
+		if i == 0 || origName[i-1] == '_' {
+			ret += strings.ToUpper(string(r))
+		} else {
+			ret += string(r)
+		}
+	}
+	if ext := filepath.Ext(ret); strings.EqualFold(ext, ".exe") {
+		ret, _ = strings.CutSuffix(ret, ext)
+	}
+	return ret
+}
+
 func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI bool, ignoredPathsSet *SortedStringSet, ignoreFilesSet *SortedStringSet, logStringSlice *logStringSliceStruct) error {
 	guiCtx := ctx
 
@@ -31,26 +51,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	a := app.New()
 	// a := app.NewWithID("dropbox_ignore_service")
 	// w := a.NewWindow(a.Metadata().Name)
-	appNameToUserDisplay := func() string {
-		// return strings.Title(strings.ReplaceAll(a.Metadata().Name, "_", ""))
-		ret := ""
-		origName := a.Metadata().Name
-		for i, r := range origName {
-			if r == '_' {
-				continue
-			}
-			if i == 0 || origName[i-1] == '_' {
-				ret += strings.ToUpper(string(r))
-			} else {
-				ret += string(r)
-			}
-		}
-		if ext := filepath.Ext(ret); strings.EqualFold(ext, ".exe") {
-			ret, _ = strings.CutSuffix(ret, ext)
-		}
-		return ret
-	}
-	w := a.NewWindow(appNameToUserDisplay())
+	w := a.NewWindow(appNameToUserDisplay(a))
 	w.Resize(fyne.NewSize(1200, 800))
 
 	ignoredPathsSetList := widget.NewList(
@@ -423,7 +424,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			autoStartCheckBox,
 			container.NewBorder(
 				nil,
-				widget.NewLabel(appNameToUserDisplay()+" "+a.Metadata().Version),
+				widget.NewLabel(appNameToUserDisplay(a)+" "+a.Metadata().Version),
 				nil, nil,
 			),
 		),
@@ -501,4 +502,32 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	}
 
 	return nil
+}
+
+func ShowError(errorText string) {
+	a := app.New()
+	w := a.NewWindow(appNameToUserDisplay(a))
+
+	var copyErrorButton *widget.Button
+	copyErrorButton = widget.NewButton("Copy Error to clipboard", func() {
+		w.Clipboard().SetContent(errorText)
+
+		bakText := copyErrorButton.Text
+		copyErrorButton.SetText("copied!")
+		go func() {
+			time.Sleep(3 * time.Second)
+			copyErrorButton.SetText(bakText)
+		}()
+
+	})
+	content := container.NewBorder(
+		nil,
+		copyErrorButton,
+		nil,
+		nil,
+		widget.NewLabel(errorText),
+	)
+	w.SetContent(content)
+
+	w.ShowAndRun()
 }

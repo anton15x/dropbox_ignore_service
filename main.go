@@ -39,21 +39,29 @@ func (i *stringArrayFlags) Set(value string) error {
 }
 
 func main() {
+	err := mainWithErrPanicWrapped()
+	if err != nil {
+		ShowError(err.Error())
+		log.Fatal(err.Error())
+		os.Exit(1)
+	}
+}
+
+func mainWithErrPanicWrapped() (retErr error) {
 	panicked := true
 	defer func() {
 		if panicked {
 			r := recover()
-			log.Printf("panicked: %s", r)
-			os.Exit(2)
+			retErr = fmt.Errorf("panicked: %v", r)
 		}
 	}()
 
 	err := mainWithErr()
 	if err != nil {
-		log.Fatalf("Error running program %s", err)
-		os.Exit(1)
+		retErr = fmt.Errorf("errored: %s", err)
 	}
 	panicked = false
+	return
 }
 
 func mainWithErr() error {
