@@ -20,6 +20,7 @@ module.exports = {
         "sp1thas",
         "spiretechnology",
         "stretchr",
+        "systray",
         "unignore", // not a correct word...
         "unignoreable", // not a correct word...
         "USERPROFILE",

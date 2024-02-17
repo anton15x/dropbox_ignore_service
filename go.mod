@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	fyne.io/fyne/v2 v2.4.3
+	fyne.io/systray v1.10.1-0.20231115130155-104f5ef7839e
 	github.com/pkg/xattr v0.4.9
 	github.com/rjeczalik/notify v0.9.3
 	github.com/spiretechnology/go-autostart/v2 v2.0.0
@@ -11,7 +12,6 @@ require (
 )
 
 require (
-	fyne.io/systray v1.10.1-0.20231115130155-104f5ef7839e // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fredbi/uri v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect

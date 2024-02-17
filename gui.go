@@ -20,6 +20,7 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"fyne.io/systray"
 )
 
 func appNameToUserDisplay(a fyne.App) string {
@@ -441,7 +442,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	)
 
 	if desk, ok := a.(desktop.App); ok {
-		var m *fyne.Menu = fyne.NewMenu("MyApp",
+		var m *fyne.Menu = fyne.NewMenu(appNameToUserDisplay(a),
 			fyne.NewMenuItem("Show", func() {
 				w.Show()
 			}),
@@ -462,6 +463,8 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			}),
 		)
 		desk.SetSystemTrayMenu(m)
+		systray.SetTitle(m.Label)
+		systray.SetTooltip(m.Label)
 	}
 
 	tabs.OnSelected = func(ti *container.TabItem) {
