@@ -149,7 +149,8 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				{filepath.Join("keep"), false},
 				{filepath.Join("keep", "node_modules"), false},
 				{filepath.Join("keep", "my_project"), false},
-				{filepath.Join("keep", "my_project", "node_modules"), true},
+				// if a slash is st the path, the path is ignore file relative
+				{filepath.Join("keep", "my_project", "node_modules"), false},
 				{filepath.Join("keep", "my_project", "node_modules", "my_project"), false},
 				{filepath.Join("keep", "my_project", "node_modules", "my_project", "node_modules"), false},
 			},
