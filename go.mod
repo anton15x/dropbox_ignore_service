@@ -5,6 +5,7 @@ go 1.18
 require (
 	fyne.io/fyne/v2 v2.4.3
 	fyne.io/systray v1.10.1-0.20231115130155-104f5ef7839e
+	github.com/bmatcuk/doublestar/v4 v4.6.1
 	github.com/pkg/xattr v0.4.9
 	github.com/rjeczalik/notify v0.9.3
 	github.com/spiretechnology/go-autostart/v2 v2.0.0

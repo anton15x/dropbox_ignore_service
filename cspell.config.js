@@ -3,9 +3,12 @@ module.exports = {
     "language": "en",
     "words": [
         "APPDATA",
+        "bmatcuk",
         "coverprofile",
         "dropboxignore",
+        "doublestar",
         "fyne",
+        "globbing",
         "golangci",
         "golint",
         "gofmt",

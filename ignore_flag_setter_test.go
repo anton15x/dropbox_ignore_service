@@ -26,7 +26,7 @@ func TestIgnoreFlagModify(t *testing.T) {
 			name: "testFolder",
 			filename: func(t *testing.T) string {
 				n := filepath.Join(dir, "testFolder")
-				require.Nil(t, os.Mkdir(n, os.ModePerm))
+				requireNoError(t, os.Mkdir(n, os.ModePerm))
 				return n
 			},
 		},
@@ -34,7 +34,7 @@ func TestIgnoreFlagModify(t *testing.T) {
 			name: "testFile",
 			filename: func(t *testing.T) string {
 				n := filepath.Join(dir, "testFile")
-				require.Nil(t, os.WriteFile(n, []byte{}, os.ModePerm))
+				requireNoError(t, os.WriteFile(n, []byte{}, os.ModePerm))
 				return n
 			},
 		},
@@ -49,23 +49,23 @@ func TestIgnoreFlagModify(t *testing.T) {
 
 			err := main.SetDropboxIgnoreFlag(filename)
 			if err != nil {
-				require.Nil(t, err, err.Error())
+				requireNoError(t, err)
 			}
 			checkIsIgnored(t, filename, true, "ignored after adding ignore flag")
 
 			err = main.SetDropboxIgnoreFlag(filename)
 			if err != nil {
-				require.Nil(t, err, err.Error())
+				requireNoError(t, err)
 			}
 			checkIsIgnored(t, filename, true, "ignored after adding ignore flag twice")
 
-			require.Nil(t, main.RemoveDropboxIgnoreFlag(filename))
+			requireNoError(t, main.RemoveDropboxIgnoreFlag(filename))
 			checkIsIgnored(t, filename, false, "tracked after removing ignore flag")
 
-			require.Nil(t, main.RemoveDropboxIgnoreFlag(filename))
+			requireNoError(t, main.RemoveDropboxIgnoreFlag(filename))
 			checkIsIgnored(t, filename, false, "tracked after removing ignore flag twice")
 
-			require.Nil(t, os.Remove(filename))
+			requireNoError(t, os.Remove(filename))
 			// isIgnored, err = main.IsPathIgnored(filename)
 			// require.NotNil(t, err)
 			// require.True(t, errors.Is(err, os.ErrNotExist))

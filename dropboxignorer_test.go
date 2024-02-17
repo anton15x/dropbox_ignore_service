@@ -44,18 +44,18 @@ func setupTestEnvironment(t *testing.T) (string, *log.Logger, context.Context) {
 func equalFilePaths(t *testing.T, dropboxDir, expected, got string) {
 	if expected != got {
 		expectedRel, err := filepath.Rel(dropboxDir, expected)
-		require.Nil(t, err)
+		requireNoError(t, err)
 		gotRel, err := filepath.Rel(dropboxDir, got)
-		require.Nil(t, err)
+		requireNoError(t, err)
 		if expectedRel == gotRel {
 			expected = expectedRel
 			got = gotRel
 			t.Logf("equalFilePaths filepath.Rel to dropboxDir equal for expected: %s and got: %s", expected, got)
 		} else {
 			expectedStat, err := os.Stat(expected)
-			require.Nil(t, err)
+			requireNoError(t, err)
 			gotStat, err := os.Stat(got)
-			require.Nil(t, err)
+			requireNoError(t, err)
 			if os.SameFile(expectedStat, gotStat) {
 				got = expected
 				t.Logf("equalFilePaths os.SameFile equal for expected: %s and got: %s", expected, got)
@@ -68,7 +68,12 @@ func equalFilePaths(t *testing.T, dropboxDir, expected, got string) {
 func createDropboxignore(t *testing.T, filename string, patterns ...string) {
 	data := []byte(strings.Join(patterns, "\n"))
 	err := os.WriteFile(filename, data, os.ModePerm)
-	require.Nil(t, err)
+	if err != nil && os.IsNotExist(err) {
+		err = os.Mkdir(filepath.Dir(filename), os.ModePerm)
+		requireNoError(t, err)
+		err = os.WriteFile(filename, data, os.ModePerm)
+	}
+	requireNoError(t, err)
 }
 
 type fileTester struct {
@@ -84,14 +89,14 @@ func NewFileTester(t *testing.T) *fileTester {
 }
 
 func (f *fileTester) Mkdir(path string, isIgnored bool) {
-	require.Nil(f.t, os.Mkdir(path, os.ModePerm))
+	requireNoError(f.t, os.Mkdir(path, os.ModePerm))
 	f.m[path] = isIgnored
 }
 
 func (f *fileTester) Check() {
 	for path, expectedIsIgnored := range f.m {
 		isIgnored, err := main.HasDropboxIgnoreFlag(path)
-		require.Nil(f.t, err)
+		requireNoError(f.t, err)
 		require.Equal(f.t, expectedIsIgnored, isIgnored, path)
 	}
 }
@@ -229,7 +234,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 
 				if testVariant.initialCreate {
 					for _, folder := range test.folders {
-						require.Nil(t, os.Mkdir(folder.path, os.ModePerm))
+						requireNoError(t, os.Mkdir(folder.path, os.ModePerm))
 					}
 				}
 
@@ -239,13 +244,13 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 
 				var wg sync.WaitGroup
 				i, err := main.NewDropboxIgnorer(dropboxDir, test.tryRun, logger, ctxCancelAble, &wg, main.NewSortedStringSet(), main.NewSortedStringSet())
-				require.Nil(t, err)
+				requireNoError(t, err)
 				wg.Wait()
 
 				if testVariant.initialCreate {
 					for _, folder := range test.folders {
 						isIgnored, err := main.HasDropboxIgnoreFlag(folder.path)
-						require.Nil(t, err)
+						requireNoError(t, err)
 						require.Equal(t, folder.ignored && !test.tryRun, isIgnored, folder.path)
 					}
 				}
@@ -256,7 +261,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				if testVariant.initialCreate {
 					for i := len(test.folders) - 1; i >= 0; i-- {
 						folder := test.folders[i]
-						require.Nil(t, os.Remove(folder.path))
+						requireNoError(t, os.Remove(folder.path))
 					}
 				}
 
@@ -265,7 +270,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				}
 
 				for _, folder := range test.folders {
-					require.Nil(t, os.Mkdir(folder.path, os.ModePerm))
+					requireNoError(t, os.Mkdir(folder.path, os.ModePerm))
 					// TODO: fast creating folders lead to missing folder change events
 					if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 						time.Sleep(time.Second)
@@ -276,14 +281,14 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 
 						equalFilePaths(t, dropboxDir, folder.path, readChanTimeout(t, ignoredFilesChan, 30*time.Second))
 						isIgnored, err := main.HasDropboxIgnoreFlag(folder.path)
-						require.Nil(t, err)
+						requireNoError(t, err)
 						require.Equal(t, folder.ignored && !test.tryRun, isIgnored, folder.path)
 					}
 				}
 
 				for _, folder := range test.folders {
 					isIgnored, err := main.HasDropboxIgnoreFlag(folder.path)
-					require.Nil(t, err)
+					requireNoError(t, err)
 					require.Equal(t, folder.ignored && !test.tryRun, isIgnored, folder.path)
 				}
 

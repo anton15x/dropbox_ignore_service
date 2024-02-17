@@ -18,27 +18,37 @@ It also offers a GUI:
 - Logs
 - Settings: Enable autostart with the operation system
 
+Cross-platform support (Windows, Linux, and macOS)
+
 The motivation for development was to exclude node_modules automatically after such folder get created.
 
-- Cross-platform support (Windows, Linux, and macOS)
+There are similar projects, but without a GUI.
 
 ## How it work?
 Dropbox do not offer a functionality to exclude files from syncing automatically yet. But what is does, is checking a file/folder for a ignore flag which this program sets. The dropbox has an article about that: https://help.dropbox.com/sync/ignored-files .
 
 ## .dropboxignore example
-The `.dropboxignore` currently disallows the use of `*\#[]?!` (exception: # of start of line makes it a comment)
+The `.dropboxignore` tries to be `.gitignore` compliant.
+
+The only difference is that negations (lines that start with a !) are not allowed.
 
 A example for a valid files is this:
 ```bash
 # ignore the node_modules folder located inside any directory
 node_modules
-# ignores the .git folder located inside the my_project folder
-my_project/.git
 
-# ignores my_folder at the dropbox root
+# lines containing a slash are relative to the ignore file location
+my_project/.git
+/my_project/.git
 /my_folder
-# ignores subfolder located inside my_folder at the project dropbox root
-/my_folder/subfolder
+
+# ignore my_project/.git located in any directory
+**/my_project/.git
+
+# matches the path "#folder"
+\#folder
+# matches the path "!folder"
+\!folder
 ```
 
 ## Installation
@@ -60,7 +70,7 @@ Requirements:
 go mod download
 go generate ./...
 go install fyne.io/fyne/v2/cmd/fyne@latest
-fyne package --release
+fyne package
 ```
 
 ## Flags
@@ -81,22 +91,13 @@ https://help.dropbox.com/de-de/sync/extended-attributes
 dropbox documentation about finding pragmatically the dropbox folder(s):
 https://help.dropbox.com/de-de/installs/locate-dropbox-folder
 
-
-## similar projects:
-- [kichik/dropbox-ignorer](https://github.com/kichik/dropbox-ignorer)
-a cli implementation to specify the dropbox path and ignore files
-
-- [sp1thas/dropboxignore](https://github.com/sp1thas/dropboxignore)
-a cli tool that parses .dropboxignore files more featured but without fs watch
-
 ## used libraries:
-- [rjeczalik/notify](https://github.com/rjeczalik/notify) filesystem change event listener:
+- [rjeczalik/notify](https://github.com/rjeczalik/notify) filesystem change event listener
 - [pkg/xattr](https://github.com/pkg/xattr) read extended file attribute for linux/darwin.
 - [fyne.io/fyne](https://github.com/fyne-io/fyne) Cross platform GUI toolkit in Go inspired by Material Design
 - [spiretechnology/go-autostart](https://github.com/spiretechnology/go-autostart) for setting the executable to autostart with the system
+- [bmatcuk/doublestar](https://github.com/bmatcuk/doublestar) Path pattern matching and globbing supporting doublestar (**) patterns.
 - [stretchr/testify](https://github.com/stretchr/testify) testing of course
 
 ## Limitations/TODO:
-- allow patters, to prevent possible braking changes, special characters got disabled for now: `*\#[]?!`
-  glob reference: https://globster.xyz/
 - nested .dropboxignore files (currently only one file in root dropbox folder allowed)
