@@ -51,8 +51,6 @@ func ParseIgnoreFile(filename string) (IgnorePattern, error) {
 
 // ignore rules:
 // https://git-scm.com/docs/gitignore
-// https://gist.github.com/jstnlvns/ebaa046fae16543cc9efc7f24bcd0e31
-// https://linuxize.com/post/gitignore-ignoring-files-in-git/
 func ParseIgnoreFileFromBytes(filename string, fileBytes []byte) (IgnorePattern, error) {
 	var patterns IgnorePattern
 
@@ -61,10 +59,6 @@ func ParseIgnoreFileFromBytes(filename string, fileBytes []byte) (IgnorePattern,
 	// ignoreLines := strings.Split(string(fileBytes), "\n")
 	ignoreLines := regexp.MustCompile("\r?\n").Split(string(fileBytes), -1)
 	for lineI, ignoreLine := range ignoreLines {
-		if ignoreLine == "" {
-			continue
-		}
-
 		// ignore comment line
 		if strings.HasPrefix(ignoreLine, "#") {
 			continue
@@ -109,12 +103,22 @@ func ParseIgnoreFileFromBytes(filename string, fileBytes []byte) (IgnorePattern,
 				if addC == 2 && i+1 >= len(ignoreLineRunes) {
 					parsedTilNow += "/*"
 				}
+			case '{':
+				fallthrough
+			case '}':
+				parsedTilNow += `\`
+				parsedTilNow += string(c)
 			default:
 				parsedTilNow += string(c)
 			}
 		}
 		parsedTilNow = strings.TrimRight(parsedTilNow, " ")
 		globPattern += parsedTilNow
+
+		if globPattern == "" {
+			// empty line ore line with only spaces
+			continue
+		}
 
 		// if a slash is in the path, independent where, it is always relative to ignore file
 		if !strings.Contains(ignoreLine, "/") {

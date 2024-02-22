@@ -136,6 +136,17 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 			},
 		},
 		{
+			name: "only_spaces",
+			prepare: func(t *testing.T, root string) {
+				// pre escapes do not get trimmed, only trailing ones
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "  ")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join(" "), false},
+				{filepath.Join("  "), false},
+			},
+		},
+		{
 			name: "trailing_spaces",
 			prepare: func(t *testing.T, root string) {
 				// pre escapes do not get trimmed, only trailing ones
@@ -400,6 +411,155 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 				{filepath.Join("sub", "aza"), true},
 				{filepath.Join("sub", "zb"), true},
 				{filepath.Join("sub", "cz"), true},
+			},
+		},
+		{
+			name: "square_brackets_character",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "test.[ab]")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.[ab]"), false},
+				{filepath.Join("test.a"), true},
+				{filepath.Join("test.b"), true},
+				{filepath.Join("test.ab"), false},
+				{filepath.Join("test.c"), false},
+				{filepath.Join("test.d"), false},
+				{filepath.Join("test.cd"), false},
+			},
+		},
+		{
+			name: "square_brackets_character_exclamation",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "test.[!ab]")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.a"), false},
+				{filepath.Join("test.b"), false},
+				{filepath.Join("test.ab"), false},
+				{filepath.Join("test.c"), true},
+				{filepath.Join("test.d"), true},
+				{filepath.Join("test.cd"), false},
+			},
+		},
+		{
+			name: "square_brackets_character_exclamation_escaped",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "test.[\\!]")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.a"), false},
+				{filepath.Join("test.!"), true},
+			},
+		},
+		{
+			name: "square_brackets_character_exclamation_in_middle",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "test.[a!]")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.a"), true},
+				{filepath.Join("test.b"), false},
+				{filepath.Join("test.c"), false},
+				{filepath.Join("test.!"), true},
+			},
+		},
+		{
+			name: "square_brackets_character_range",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "test.[a-c]")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.a"), true},
+				{filepath.Join("test.b"), true},
+				{filepath.Join("test.ab"), false},
+				{filepath.Join("test.c"), true},
+				{filepath.Join("test.d"), false},
+				{filepath.Join("test.cd"), false},
+			},
+		},
+		{
+			name: "square_brackets_character_range_multiple",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "test.[a-cx-z]")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.a"), true},
+				{filepath.Join("test.b"), true},
+				{filepath.Join("test.ab"), false},
+				{filepath.Join("test.c"), true},
+				{filepath.Join("test.d"), false},
+				{filepath.Join("test.cd"), false},
+				{filepath.Join("test.w"), false},
+				{filepath.Join("test.x"), true},
+				{filepath.Join("test.y"), true},
+				{filepath.Join("test.z"), true},
+			},
+		},
+		{
+			name: "square_brackets_character_range_exclamation",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "test.[!a-c]")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.a"), false},
+				{filepath.Join("test.b"), false},
+				{filepath.Join("test.ab"), false},
+				{filepath.Join("test.c"), false},
+				{filepath.Join("test.d"), true},
+				{filepath.Join("test.cd"), false},
+			},
+		},
+		{
+			name: "square_brackets_character_range_multiple_exclamation",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "test.[!a-cx-z]")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.a"), false},
+				{filepath.Join("test.b"), false},
+				{filepath.Join("test.ab"), false},
+				{filepath.Join("test.c"), false},
+				{filepath.Join("test.d"), true},
+				{filepath.Join("test.cd"), false},
+				{filepath.Join("test.w"), true},
+				{filepath.Join("test.x"), false},
+				{filepath.Join("test.y"), false},
+				{filepath.Join("test.z"), false},
+			},
+		},
+		{
+			name: "square_brackets_escaped",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "test.\\[ab\\]")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.[ab]"), true},
+				{filepath.Join("test.a"), false},
+				{filepath.Join("test.b"), false},
+				{filepath.Join("test.ab"), false},
+			},
+		},
+		{
+			name: "curly_brackets_git_compatibility",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "test.{log,exe}")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.a"), false},
+				{filepath.Join("test.exe"), false}, // true if supported
+				{filepath.Join("test.log"), false}, // true if supported
+				{filepath.Join("test.{log,exe}"), true},
+				{filepath.Join("test.txt"), false},
+			},
+		},
+		{
+			name: "/",
+			prepare: func(t *testing.T, root string) {
+				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "/")
+			},
+			folders: []*iTestFolder{
+				{filepath.Join("test.a"), false},
 			},
 		},
 	}
