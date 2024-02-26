@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 
@@ -20,7 +19,7 @@ type DropboxIgnorer struct {
 	dropboxPath string
 	tryRun      bool
 
-	ignorePatterns   []string
+	ignorePatterns   IgnorePattern
 	modificationChan chan notify.EventInfo
 
 	ctx    context.Context
@@ -111,37 +110,11 @@ func (i *DropboxIgnorer) addIgnoreFile(ignoreFile string) error {
 	i.ignorePatterns = nil
 	i.ignoreFiles.Add(ignoreFile)
 
-	ignoreFileBytes, err := os.ReadFile(ignoreFile)
+	patterns, err := ParseIgnoreFile(ignoreFile)
 	if err != nil {
-		return fmt.Errorf("error reading ignore file %s: %w", ignoreFile, err)
+		return fmt.Errorf("error parsing ignore file %s: %w", ignoreFile, err)
 	}
-
-	// ignoreLines := strings.Split(string(ignoreFileBytes), "\n")
-	ignoreLines := regexp.MustCompile("\r?\n").Split(string(ignoreFileBytes), -1)
-	for _, ignoreLine := range ignoreLines {
-		if ignoreLine == "" {
-			continue
-		}
-		if strings.HasPrefix(ignoreLine, "#") {
-			continue
-		}
-
-		if strings.Contains(ignoreLine, "!") {
-			return fmt.Errorf("negation not allowed: %s", ignoreLine)
-		}
-
-		if strings.ContainsAny(ignoreLine, "*\\[#]?!") {
-			return fmt.Errorf("line contains unsupported special character (this behavior is indented to avoid breaking changes after these get implemented): %s", ignoreLine)
-		}
-
-		ignoreLine = filepath.FromSlash(ignoreLine)
-		if strings.HasPrefix(ignoreLine, string(filepath.Separator)) {
-			ignoreLine = filepath.Join(i.dropboxPath, ignoreLine)
-		} else {
-			ignoreLine = string(filepath.Separator) + ignoreLine
-		}
-		i.ignorePatterns = append(i.ignorePatterns, ignoreLine)
-	}
+	i.ignorePatterns = patterns
 	i.logger.Printf("added %s file %s: %+v", DropboxIgnoreFilename, ignoreFile, i.ignorePatterns)
 
 	return nil
@@ -256,13 +229,5 @@ func (i *DropboxIgnorer) ShouldPathGetIgnored(path string) bool {
 }
 
 func (i *DropboxIgnorer) isPathIgnoredByPattern(path string) bool {
-	for _, ignorePattern := range i.ignorePatterns {
-		// matches, err := filepath.Match(ignorePattern)
-
-		if strings.HasSuffix(path, ignorePattern) {
-			return true
-		}
-	}
-
-	return false
+	return IsIgnored(i.ignorePatterns, path)
 }

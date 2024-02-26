@@ -7,7 +7,7 @@
     "lint": "node golint.js",
     "spellcheck": "cspell lint .",
     "test": "npm run spellcheck && npm run test_go",
-    "test_go": "go test ./..."
+    "test_go": "go test -v ./..."
   },
   "repository": {
     "type": "git",

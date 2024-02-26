@@ -69,9 +69,9 @@ goweight
 
 ## running tests:
 ```bash
-go test ./...
+go test -v ./...
 
-go test -run ^TestIgnoreFlagModify$ github.com/anton15x/dropbox_ignore_service
+go test -v -run ^TestIgnoreFlagModify$ github.com/anton15x/dropbox_ignore_service
 ```
 
 ## running linter:
