@@ -98,6 +98,3 @@ https://help.dropbox.com/de-de/installs/locate-dropbox-folder
 - [spiretechnology/go-autostart](https://github.com/spiretechnology/go-autostart) for setting the executable to autostart with the system
 - [bmatcuk/doublestar](https://github.com/bmatcuk/doublestar) Path pattern matching and globbing supporting doublestar (**) patterns.
 - [stretchr/testify](https://github.com/stretchr/testify) testing of course
-
-## Limitations/TODO:
-- nested .dropboxignore files (currently only one file in root dropbox folder allowed)
