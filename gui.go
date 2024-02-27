@@ -182,7 +182,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		for i, dropboxIgnorer := range dropboxIgnorers {
 			ignoredFilesProgressCurrentDropboxPath.SetText(dropboxIgnorer.dropboxPath)
 
-			err := filepath.Walk(dropboxIgnorer.dropboxPath, func(path string, info fs.FileInfo, err error) error {
+			err := filepath.WalkDir(dropboxIgnorer.dropboxPath, func(path string, info fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}

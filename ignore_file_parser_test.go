@@ -1,7 +1,9 @@
 package main_test
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -19,6 +21,23 @@ import (
 func requireNoError(t *testing.T, err error) {
 	if err != nil {
 		require.Nil(t, err, "errored: %s", err.Error())
+	}
+}
+
+func requireWriteToFile(t *testing.T, f io.Writer, data []byte) {
+	n, err := f.Write(data)
+	requireNoError(t, err)
+	require.Equal(t, len(data), n)
+}
+
+func requireMkdir(t *testing.T, path string) {
+	requireNoError(t, os.Mkdir(path, os.ModePerm))
+}
+
+func requireCloseFile(t *testing.T, f *os.File) {
+	err := f.Close()
+	if err != nil && !errors.Is(err, os.ErrClosed) {
+		requireNoError(t, err)
 	}
 }
 
