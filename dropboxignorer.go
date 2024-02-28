@@ -72,6 +72,12 @@ func (i *DropboxIgnorer) IgnoredPathsSet() *SortedStringSet {
 func (i *DropboxIgnorer) IgnoreFiles() *SortedStringSet {
 	return i.ignoreFiles
 }
+func (i *DropboxIgnorer) TryRun() bool {
+	return i.tryRun
+}
+func (i *DropboxIgnorer) DropboxPath() string {
+	return i.dropboxPath
+}
 
 func (i *DropboxIgnorer) checkDirForIgnore(rootPath string, skipRootIgnoreFile bool) error {
 	err := filepath.WalkDir(rootPath, func(path string, info fs.DirEntry, err error) error {

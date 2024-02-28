@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -16,42 +17,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-/**
- * checks is tow filepaths are equal
- * cspell:disable
- *
- * github acitons fails on macOS because of this error:
- * --- FAIL: TestDropboxIgnorerListenEvents/base_name_and_subfolder_variant_watch_only (0.17s)
- *
- * 	dropboxignorer_test.go:227:
- * 	    	Error Trace:	/Users/runner/work/dropbox_ignore_service/dropbox_ignore_service/dropboxignorer_test.go:227
- * 	    	Error:      	Not equal:
- * 	    	            	expected: "/var/folders/qv/pdh5wsgn0lq3dp77zj602b5c0000gn/T/TestDropboxIgnorerListenEventsbase_name_and_subfolder_variant_watch_only2776636403/001/my_project/node_modules"
- * 	    	            	actual  : "/private/var/folders/qv/pdh5wsgn0lq3dp77zj602b5c0000gn/T/TestDropboxIgnorerListenEventsbase_name_and_subfolder_variant_watch_only2776636403/001/my_project/node_modules"
- * cspell: enable
- */
-func equalFilePaths(t *testing.T, dropboxDir, expected, got string) {
-	if expected != got {
-		expectedRel, err := filepath.Rel(dropboxDir, expected)
-		requireNoError(t, err)
-		gotRel, err := filepath.Rel(dropboxDir, got)
-		requireNoError(t, err)
-		if expectedRel == gotRel {
-			expected = expectedRel
-			got = gotRel
-			t.Logf("equalFilePaths filepath.Rel to dropboxDir equal for expected: %s and got: %s", expected, got)
-		} else {
-			expectedStat, err := os.Stat(expected)
-			requireNoError(t, err)
-			gotStat, err := os.Stat(got)
-			requireNoError(t, err)
-			if os.SameFile(expectedStat, gotStat) {
-				got = expected
-				t.Logf("equalFilePaths os.SameFile equal for expected: %s and got: %s", expected, got)
-			}
-		}
+type testLog struct {
+	t *testing.T
+}
+
+func NewTestLogger(t *testing.T) *log.Logger {
+	// return log.Default()
+	return log.New(NewTestLog(t), t.Name(), log.LstdFlags)
+}
+
+func NewTestLog(t *testing.T) *testLog {
+	return &testLog{
+		t: t,
 	}
-	require.Equal(t, expected, got)
+}
+
+func (l *testLog) Write(p []byte) (n int, err error) {
+	l.t.Log(strings.TrimSuffix(string(p), "\n"))
+	return len(p), nil
 }
 
 func createDropboxignore(t *testing.T, filename string, patterns ...string) {
@@ -66,26 +49,44 @@ func createDropboxignore(t *testing.T, filename string, patterns ...string) {
 }
 
 type fileTester struct {
-	t                *testing.T
-	m                map[string]bool
-	i                *main.DropboxIgnorer
-	ignoredFilesChan <-chan string
+	t                      *testing.T
+	m                      map[string]bool
+	i                      *main.DropboxIgnorer
+	ignoredPathsChan       <-chan string
+	ignoredPathsChanRemove <-chan string
 }
 
 func NewFileTester(t *testing.T, i *main.DropboxIgnorer) *fileTester {
-	ignoredFilesChan := make(chan string, 1000)
+	ignoredPathsChan := make(chan string, 1000)
 	i.IgnoredPathsSet().AddAddEventListener(func(s string) {
-		ignoredFilesChan <- s
+		ignoredPathsChan <- s
+	})
+	ignoredPathsChanRemove := make(chan string, 1000)
+	i.IgnoredPathsSet().AddRemoveEventListener(func(s string) {
+		ignoredPathsChanRemove <- s
 	})
 	i.ListenForEvents()
 
 	time.Sleep(time.Second)
 
 	return &fileTester{
-		t:                t,
-		m:                make(map[string]bool),
-		i:                i,
-		ignoredFilesChan: ignoredFilesChan,
+		t:                      t,
+		m:                      make(map[string]bool),
+		i:                      i,
+		ignoredPathsChan:       ignoredPathsChan,
+		ignoredPathsChanRemove: ignoredPathsChanRemove,
+	}
+}
+
+func (f *fileTester) Remove(path string) {
+	isIgnored := f.m[path]
+	requireNoError(f.t, os.Remove(path))
+	delete(f.m, path)
+
+	if isIgnored {
+		f.t.Logf("waiting for folder remove event of %s", path)
+		val := readChanTimeout(f.t, f.ignoredPathsChanRemove, 10*time.Second, path)
+		require.Equal(f.t, path, val)
 	}
 }
 
@@ -95,30 +96,86 @@ func (f *fileTester) Mkdir(path string, isIgnored bool) {
 	f.EditFileStatus(path, isIgnored)
 }
 
+func (f *fileTester) CheckOfPreInit(path string, isIgnored bool) {
+	f.m[path] = isIgnored
+
+	f.checkFile(path, isIgnored)
+}
+
 func (f *fileTester) EditFileStatus(path string, isIgnored bool) {
+	require.False(f.t, f.m[path])
 	f.m[path] = isIgnored
 
 	if isIgnored {
-		val := readChanTimeout(f.t, f.ignoredFilesChan, 10*time.Second, path)
+		f.t.Logf("waiting for folder create event of %s", path)
+		val := readChanTimeout(f.t, f.ignoredPathsChan, 20*time.Second, path)
 		require.Equal(f.t, path, val)
+
 	}
+	f.checkFile(path, isIgnored)
+
 }
 
 func (f *fileTester) Check() {
 	for path, expectedIsIgnored := range f.m {
-		isIgnored, err := main.HasDropboxIgnoreFlag(path)
-		requireNoError(f.t, err)
-		require.Equal(f.t, expectedIsIgnored, isIgnored, path)
+		f.checkFile(path, expectedIsIgnored)
 	}
 }
 
-func readChanTimeout[T any](t *testing.T, c <-chan T, duration time.Duration, errMsg string) T {
+func (f *fileTester) CheckNoPendingEvents() {
+	f.checkNoPendingEvents(false)
+}
+
+func (f *fileTester) CheckNoPendingEventsAfterCtxCancelWgWait() {
+	f.checkNoPendingEvents(true)
+}
+
+func (f *fileTester) checkNoPendingEvents(allowRoot bool) {
+	// channels should be empty now:
+	for ok := true; ok; {
+		select {
+		case p := <-f.ignoredPathsChan:
+			if allowRoot {
+				// on macOS the root folder gets notified as an event after closing
+				require.Equal(f.t, f.i.DropboxPath(), p)
+				continue
+			}
+			assert.Fail(f.t, "expected no additional events but got:", p)
+		case p := <-f.ignoredPathsChanRemove:
+			assert.Fail(f.t, "expected no additional remove events but got:", p)
+		default:
+			ok = false
+		}
+	}
+}
+
+func (f *fileTester) CheckFile(path string) {
+	expectedIsIgnored, ok := f.m[path]
+	require.True(f.t, ok)
+	f.checkFile(path, expectedIsIgnored)
+}
+
+func (f *fileTester) checkFile(path string, expectedIsIgnored bool) {
+	isIgnored, err := main.HasDropboxIgnoreFlag(path)
+	requireNoError(f.t, err)
+	require.Equal(f.t, expectedIsIgnored && !f.i.TryRun(), isIgnored, path)
+}
+
+func readChanTimeout[T any](t *testing.T, c <-chan T, duration time.Duration, format string, a ...any) T {
+	val, ok := readChanTimeoutWithOk(t, c, duration, format, a...)
+	require.True(t, ok)
+	return val
+}
+
+func readChanTimeoutWithOk[T any](t *testing.T, c <-chan T, duration time.Duration, format string, a ...any) (T, bool) {
 	select {
 	case val, ok := <-c:
-		require.True(t, ok)
-		return val
+		return val, ok
 	case <-time.After(duration):
-		t.Errorf("read chan timeout of %s reached: %s", duration.String(), errMsg)
+		if len(a) > 0 {
+			format = fmt.Sprintf(format, a...)
+		}
+		t.Errorf("read chan timeout of %s reached: %s", duration.String(), format)
 		t.FailNow()
 		panic("linter fix")
 	}
@@ -237,8 +294,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				ctx, ctxCancel := context.WithTimeout(context.Background(), time.Minute)
 				defer ctxCancel()
 
-				// TODO: test dependent instead of global log?
-				logger := log.Default()
+				logger := NewTestLogger(t)
 
 				test.prepare(t, dropboxDir)
 
@@ -267,77 +323,36 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				requireNoError(t, err)
 				wg.Wait()
 
+				ft := NewFileTester(t, i)
+
 				if testVariant.initialCreate {
 					for _, folder := range test.folders {
-						isIgnored, err := main.HasDropboxIgnoreFlag(folder.path)
-						requireNoError(t, err)
-						require.Equal(t, folder.ignored && !test.tryRun, isIgnored, folder.path)
+						ft.CheckOfPreInit(folder.path, folder.ignored)
 					}
 				}
 
-				ignoredFilesChan := make(chan string, 2*len(test.folders))
-				ignoredPathsSet.AddAddEventListener(func(s string) {
-					ignoredFilesChan <- s
-				})
 				i.ListenForEvents()
 
 				if testVariant.initialCreate {
 					for i := len(test.folders) - 1; i >= 0; i-- {
 						folder := test.folders[i]
-						requireNoError(t, os.Remove(folder.path))
-					}
-				}
 
-				if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
-					time.Sleep(time.Second)
-				}
-
-				for _, folder := range test.folders {
-					requireNoError(t, os.Mkdir(folder.path, os.ModePerm))
-					// TODO: fast creating folders lead to missing folder change events
-					if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
-						time.Sleep(time.Second)
-					}
-
-					if folder.ignored {
-						log.Printf("waiting for folder create event of %s", folder.path)
-
-						equalFilePaths(t, dropboxDir, folder.path, readChanTimeout(t, ignoredFilesChan, 30*time.Second, folder.path))
-						isIgnored, err := main.HasDropboxIgnoreFlag(folder.path)
-						requireNoError(t, err)
-						require.Equal(t, folder.ignored && !test.tryRun, isIgnored, folder.path)
+						ft.Remove(folder.path)
 					}
 				}
 
 				for _, folder := range test.folders {
-					isIgnored, err := main.HasDropboxIgnoreFlag(folder.path)
-					requireNoError(t, err)
-					require.Equal(t, folder.ignored && !test.tryRun, isIgnored, folder.path)
+					ft.Mkdir(folder.path, folder.ignored)
 				}
 
-				// c should be empty now:
-				for ok := true; ok; {
-					select {
-					case p := <-ignoredFilesChan:
-						assert.Fail(t, "expected no additional events but got:", p)
-					default:
-						ok = false
-					}
-				}
+				ft.Check()
+
+				ft.CheckNoPendingEvents()
 
 				ctxCancel()
 				wg.Wait()
 
-				// c should still be empty:
-				for ok := true; ok; {
-					select {
-					case p := <-ignoredFilesChan:
-						// on macOS the root folder gets notified as an event after closing
-						equalFilePaths(t, dropboxDir, dropboxDir, p)
-					default:
-						ok = false
-					}
-				}
+				ft.CheckNoPendingEventsAfterCtxCancelWgWait()
 			})
 		}
 	}
@@ -512,8 +527,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 			ctx, ctxCancel := context.WithTimeout(context.Background(), time.Minute)
 			defer ctxCancel()
 
-			// TODO: test dependent instead of global log?
-			logger := log.Default()
+			logger := NewTestLogger(t)
 
 			tryRun := false
 			var wg sync.WaitGroup
@@ -526,6 +540,13 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 			ft := NewFileTester(t, i)
 			test.edit(t, dropboxDir, ft)
 			ft.Check()
+
+			ft.CheckNoPendingEvents()
+
+			ctxCancel()
+			wg.Wait()
+
+			ft.CheckNoPendingEventsAfterCtxCancelWgWait()
 		})
 	}
 }
