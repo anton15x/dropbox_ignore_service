@@ -71,6 +71,9 @@ goweight
 ```bash
 go test -v ./...
 
+# disable cache with -count=1
+go test -v ./... -count=1
+
 go test -v -run ^TestIgnoreFlagModify$ github.com/anton15x/dropbox_ignore_service
 ```
 
