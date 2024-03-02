@@ -94,6 +94,8 @@ func (f *fileTester) Remove(path string) {
 		f.t.Logf("waiting for folder remove event of %s", path)
 		val := readChanTimeout(f.t, f.ignoredPathsChanRemove, 10*time.Second, path)
 		require.Equal(f.t, path, val)
+	} else if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -102,7 +104,7 @@ func (f *fileTester) Mkdir(path string, isIgnored bool) {
 
 	// TODO: fast creating folders lead to missing folder change events
 	if !isIgnored && (runtime.GOOS == "darwin" || runtime.GOOS == "linux") {
-		time.Sleep(time.Second)
+		time.Sleep(5 * time.Second)
 	}
 
 	f.EditFileStatus(path, isIgnored)
