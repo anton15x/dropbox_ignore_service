@@ -635,6 +635,41 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 			},
 		},
 		{
+			name: "ignore_file_in_subfolder_renamed",
+			edit: func(t *testing.T, root string, ft *fileTester) {
+				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "node_modules")
+				ft.Mkdir(filepath.Join(root, "my_project"), false)
+				ft.Mkdir(filepath.Join(root, "my_project", "node_modules"), true)
+				ft.Mkdir(filepath.Join(root, "my_project", "target"), false)
+				ft.Mkdir(filepath.Join(root, "my_project", "src"), false)
+				createDropboxignore(t, filepath.Join(root, "my_project", main.DropboxIgnoreFilename), "/target")
+				ft.EditFileStatus(filepath.Join(root, "my_project", "target"), true)
+
+				var wg sync.WaitGroup
+				wg.Add(1)
+				called := 0
+				ft.i.IgnoreFiles().AddRemoveEventListener(func(s string) {
+					require.Equal(t, filepath.Join(root, "my_project", main.DropboxIgnoreFilename), s)
+					require.Equal(t, 0, called)
+					called++
+					wg.Done()
+				})
+				ft.Rename(filepath.Join(root, "my_project"), filepath.Join(root, "my_project2"), false, map[string]bool{
+					filepath.Join(root, "my_project2", "node_modules"): true,
+					filepath.Join(root, "my_project2", "target"):       true,
+					filepath.Join(root, "my_project2", "src"):          false,
+				})
+				wg.Wait()
+
+				// the ignore file should be removed
+				// =>  recreate project folder structure without dropboxignore in there should not ignore target
+				ft.Mkdir(filepath.Join(root, "my_project"), false)
+				ft.Mkdir(filepath.Join(root, "my_project", "node_modules"), true)
+				ft.Mkdir(filepath.Join(root, "my_project", "target"), false)
+				ft.Mkdir(filepath.Join(root, "my_project", "src"), false)
+			},
+		},
+		{
 			name: "path_renamed_gets_ignored",
 			edit: func(t *testing.T, root string, ft *fileTester) {
 				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/my_project2")

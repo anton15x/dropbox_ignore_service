@@ -251,6 +251,11 @@ func (i *DropboxIgnorer) ListenForEvents() {
 							if filepath.Base(path) == DropboxIgnoreFilename {
 								i.removeIgnoreFile(path)
 							}
+							for _, ignoreFile := range i.ignoreFiles.Values {
+								if strings.HasPrefix(ignoreFile, pathWithSeparatorSuffix) {
+									i.removeIgnoreFile(ignoreFile)
+								}
+							}
 						}
 					}
 				}
