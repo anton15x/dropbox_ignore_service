@@ -149,6 +149,7 @@ func (i *DropboxIgnorer) addIgnoreFile(ignoreFile string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error parsing ignore file %s: %w", ignoreFile, err)
 	}
+
 	oldPatterns := i.ignorePatterns[filepath.Dir(ignoreFile)]
 	equal := len(patterns) == len(oldPatterns)
 	for i := range patterns {
@@ -160,6 +161,7 @@ func (i *DropboxIgnorer) addIgnoreFile(ignoreFile string) (bool, error) {
 	if equal {
 		return false, nil
 	}
+
 	i.ignorePatterns[filepath.Dir(ignoreFile)] = patterns
 	i.logger.Printf("added %s file %s: %+v", DropboxIgnoreFilename, ignoreFile, patterns)
 
@@ -192,7 +194,7 @@ func (i *DropboxIgnorer) ListenForEvents() {
 				event := ei.Event()
 				if event == notify.Create || event == notify.Rename || (event == notify.Write && filepath.Base(path) == DropboxIgnoreFilename) {
 					// info: rename event is triggered for both, the new AND old name => stat to check if path exists
-					_, err := os.Stat(path)
+					info, err := os.Stat(path)
 					if err != nil {
 						if !os.IsNotExist(err) {
 							i.logger.Printf("stat for path failed: %s", err)
@@ -214,6 +216,12 @@ func (i *DropboxIgnorer) ListenForEvents() {
 							if err != nil {
 								i.logger.Printf("Error ignoring dir %s: %s", path, err)
 							}
+						} else if info.IsDir() {
+							// created/renamed directory => check for sub directories
+							err = i.checkDirForIgnore(path, false)
+							if err != nil {
+								i.logger.Printf("Error handling ignore file subdirectories of %s: %s", path, err)
+							}
 						}
 					}
 				}
@@ -226,6 +234,20 @@ func (i *DropboxIgnorer) ListenForEvents() {
 							i.logger.Printf("stat for path failed: %s", err)
 						} else {
 							i.ignoredPathsSet.Remove(path)
+
+							// remove is single element only
+							// rename could cause sub directories to get removed
+							// but handle both scenarios es they could have subdirectories
+							pathWithSeparatorSuffix := path
+							if !strings.HasSuffix(path, string(filepath.Separator)) {
+								pathWithSeparatorSuffix += string(filepath.Separator)
+							}
+							for _, path := range i.ignoredPathsSet.Values {
+								if strings.HasPrefix(path, pathWithSeparatorSuffix) {
+									i.ignoredPathsSet.Remove(path)
+								}
+							}
+
 							if filepath.Base(path) == DropboxIgnoreFilename {
 								i.removeIgnoreFile(path)
 							}
@@ -250,6 +272,14 @@ func (i *DropboxIgnorer) SetIgnoreFlag(path string) error {
 	}
 	i.logger.Printf("ignoring dir %s", path)
 
+	hasFlag, err := HasDropboxIgnoreFlag(path)
+	if err != nil {
+		return fmt.Errorf("error checking if path %s already has ignore flag: %w", path, err)
+	}
+	if hasFlag {
+		// already has flag => do not set again
+		return nil
+	}
 	return SetDropboxIgnoreFlag(path)
 }
 

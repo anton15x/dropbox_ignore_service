@@ -320,6 +320,7 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "*.exe\nn*.log")
 			},
 			folders: []*iTestFolder{
+				{filepath.Join(".exe"), true},
 				{filepath.Join("go.exe"), true},
 				{filepath.Join("gofmt.exe"), true},
 				{filepath.Join("n.log"), true},
