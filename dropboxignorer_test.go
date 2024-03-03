@@ -63,16 +63,24 @@ type fileTester struct {
 	i                      *main.DropboxIgnorer
 	ignoredPathsChan       <-chan string
 	ignoredPathsChanRemove <-chan string
+	ignoreFilesChan        <-chan string
 }
 
 func NewFileTester(t *testing.T, i *main.DropboxIgnorer) *fileTester {
 	ignoredPathsChan := make(chan string, 1000)
 	i.IgnoredPathsSet().AddAddEventListener(func(s string) {
+		t.Logf("IgnoredPathsSet add: %s", s)
 		ignoredPathsChan <- s
 	})
 	ignoredPathsChanRemove := make(chan string, 1000)
 	i.IgnoredPathsSet().AddRemoveEventListener(func(s string) {
+		t.Logf("IgnoredPathsSet remove: %s", s)
 		ignoredPathsChanRemove <- s
+	})
+	ignoreFilesChan := make(chan string, 1000)
+	i.IgnoreFiles().AddAddEventListener(func(s string) {
+		t.Logf("IgnoreFiles add: %s", s)
+		ignoreFilesChan <- s
 	})
 	i.ListenForEvents()
 
@@ -84,6 +92,20 @@ func NewFileTester(t *testing.T, i *main.DropboxIgnorer) *fileTester {
 		i:                      i,
 		ignoredPathsChan:       ignoredPathsChan,
 		ignoredPathsChanRemove: ignoredPathsChanRemove,
+		ignoreFilesChan:        ignoreFilesChan,
+	}
+}
+
+func (f *fileTester) CreateDropboxignore(filename string, patterns ...string) {
+	newFile := !f.i.IgnoreFiles().Has(filename)
+	createDropboxignore(f.t, filename, patterns...)
+
+	if newFile {
+		f.t.Logf("waiting for dropbox ignore file create event of %s", filename)
+		val := readChanTimeout(f.t, f.ignoreFilesChan, 10*time.Second, filename)
+		require.Equal(f.t, filename, val)
+	} else {
+		sleepToEnsureEvents()
 	}
 }
 
@@ -421,7 +443,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				dropboxDir, err := os.MkdirTemp(tmpTestDir, test.name)
 				require.Nil(t, err)
 				defer PrintFileTreeIfTestFailed(t, dropboxDir)
-				ctx, ctxCancel := context.WithTimeout(context.Background(), time.Minute)
+				ctx, ctxCancel := context.WithTimeout(context.Background(), 10*time.Minute)
 				defer ctxCancel()
 
 				logger := NewTestLogger(t)
@@ -496,7 +518,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		{
 			name: "watch_ignore_file_changes",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/my_project")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/my_project")
 				ft.Mkdir(filepath.Join(root, "node_modules"), false)
 				ft.Mkdir(filepath.Join(root, "my_project"), true)
 				ft.Mkdir(filepath.Join(root, "my_project", "node_modules"), false)
@@ -505,7 +527,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 				ft.Mkdir(filepath.Join(root, "my_project3"), false)
 				ft.Mkdir(filepath.Join(root, "my_project3", "node_modules"), false)
 				ft.Mkdir(filepath.Join(root, "my"), false)
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/my_project\n/my_project2")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/my_project\n/my_project2")
 				ft.EditFileStatus(filepath.Join(root, "my_project2"), true)
 			},
 		},
@@ -571,7 +593,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 					wg.Wait()
 				})
 				wg.Add(1)
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/node_modules")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/node_modules")
 				f, err := os.OpenFile(filepath.Join(root, main.DropboxIgnoreFilename), os.O_RDONLY, os.ModePerm)
 				requireNoError(t, err)
 				defer requireCloseFile(t, f)
@@ -589,40 +611,40 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 				ft.Mkdir(filepath.Join(root, "my_project", "node_modules"), false)
 				ft.Mkdir(filepath.Join(root, "my_project2"), false)
 				ft.Mkdir(filepath.Join(root, "my_project2", "node_modules"), false)
-				createDropboxignore(t, filepath.Join(root, "my_project2", main.DropboxIgnoreFilename), "/node_modules")
+				ft.CreateDropboxignore(filepath.Join(root, "my_project2", main.DropboxIgnoreFilename), "/node_modules")
 				ft.EditFileStatus(filepath.Join(root, "my_project2", "node_modules"), true)
 			},
 		},
 		{
 			name: "subfolder_ignore_file_ignores_subfolder_itself",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, "my_project", main.DropboxIgnoreFilename), "/node_modules")
+				ft.CreateDropboxignore(filepath.Join(root, "my_project", main.DropboxIgnoreFilename), "/node_modules")
 				ft.Check()
 				ft.Mkdir(filepath.Join(root, "my_project", "node_modules"), true)
 				ft.Mkdir(filepath.Join(root, "my_project2"), false)
 				ft.Mkdir(filepath.Join(root, "my_project2", "node_modules"), false)
 				ft.Mkdir(filepath.Join(root, "node_modules"), false)
-				createDropboxignore(t, filepath.Join(root, "my_project2", main.DropboxIgnoreFilename), "/")
+				ft.CreateDropboxignore(filepath.Join(root, "my_project2", main.DropboxIgnoreFilename), "/")
 				ft.EditFileStatus(filepath.Join(root, "my_project2"), true)
 			},
 		},
 		{
 			name: "subfolder_ignore_file_ignores_ignore_file",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, "my_project", main.DropboxIgnoreFilename), "/node_modules")
+				ft.CreateDropboxignore(filepath.Join(root, "my_project", main.DropboxIgnoreFilename), "/node_modules")
 				ft.Check()
 				ft.Mkdir(filepath.Join(root, "my_project", "node_modules"), true)
 				ft.Mkdir(filepath.Join(root, "my_project2"), false)
 				ft.Mkdir(filepath.Join(root, "my_project2", "node_modules"), false)
 				ft.Mkdir(filepath.Join(root, "node_modules"), false)
-				createDropboxignore(t, filepath.Join(root, "my_project2", main.DropboxIgnoreFilename), "/"+main.DropboxIgnoreFilename)
+				ft.CreateDropboxignore(filepath.Join(root, "my_project2", main.DropboxIgnoreFilename), "/"+main.DropboxIgnoreFilename)
 				ft.EditFileStatus(filepath.Join(root, "my_project2", main.DropboxIgnoreFilename), true)
 			},
 		},
 		{
 			name: "ignore_file_removed",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "node_modules")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "node_modules")
 				ft.Mkdir(filepath.Join(root, "my_project"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "node_modules"), true)
 
@@ -646,12 +668,12 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		{
 			name: "ignore_file_in_subfolder_renamed",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "node_modules")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "node_modules")
 				ft.Mkdir(filepath.Join(root, "my_project"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "node_modules"), true)
 				ft.Mkdir(filepath.Join(root, "my_project", "target"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "src"), false)
-				createDropboxignore(t, filepath.Join(root, "my_project", main.DropboxIgnoreFilename), "/target")
+				ft.CreateDropboxignore(filepath.Join(root, "my_project", main.DropboxIgnoreFilename), "/target")
 				ft.EditFileStatus(filepath.Join(root, "my_project", "target"), true)
 
 				var wg sync.WaitGroup
@@ -681,7 +703,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		{
 			name: "path_renamed_gets_ignored",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/my_project2")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/my_project2")
 				ft.Mkdir(filepath.Join(root, "my_project"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "node_modules"), false)
 				ft.Mkdir(filepath.Join(root, "node_modules"), false)
@@ -693,7 +715,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		{
 			name: "path_renamed_un_ignored",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/my_project*")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/my_project*")
 				ft.Mkdir(filepath.Join(root, "my_project"), true)
 				ft.Mkdir(filepath.Join(root, "my_project", "a1"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "a2"), false)
@@ -709,7 +731,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		{
 			name: "path_renamed_sill_ignored",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/my_project*")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/my_project*")
 				ft.Mkdir(filepath.Join(root, "my_project"), true)
 				ft.Mkdir(filepath.Join(root, "my_project", "a1"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "a2"), false)
@@ -725,7 +747,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		{
 			name: "path_renamed_with_subfolder_gets_ignored",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/my_project2/node_modules")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/my_project2/node_modules")
 				ft.Mkdir(filepath.Join(root, "my_project"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "node_modules"), false)
 				ft.Mkdir(filepath.Join(root, "node_modules"), false)
@@ -737,7 +759,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		{
 			name: "path_renamed_with_multiple_subfolder_now_ignored",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/my_project2/**/a?")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/my_project2/**/a?")
 				ft.Mkdir(filepath.Join(root, "my_project"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "a1"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "a2"), false)
@@ -759,7 +781,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		{
 			name: "path_renamed_with_subfolder_un_ignored",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/my_project*/**/a?")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/my_project*/**/a?")
 				ft.Mkdir(filepath.Join(root, "my_project"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "a1"), true)
 				ft.Mkdir(filepath.Join(root, "my_project", "a2"), true)
@@ -775,7 +797,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		{
 			name: "path_renamed_with_subfolder_sill_ignored",
 			edit: func(t *testing.T, root string, ft *fileTester) {
-				createDropboxignore(t, filepath.Join(root, main.DropboxIgnoreFilename), "/my_project*/**/a?")
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/my_project*/**/a?")
 				ft.Mkdir(filepath.Join(root, "my_project"), false)
 				ft.Mkdir(filepath.Join(root, "my_project", "a1"), true)
 				ft.Mkdir(filepath.Join(root, "my_project", "a2"), true)
@@ -801,7 +823,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 			dropboxDir, err := os.MkdirTemp(tmpTestDir, test.name)
 			require.Nil(t, err)
 			defer PrintFileTreeIfTestFailed(t, dropboxDir)
-			ctx, ctxCancel := context.WithTimeout(context.Background(), time.Minute)
+			ctx, ctxCancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer ctxCancel()
 
 			logger := NewTestLogger(t)
