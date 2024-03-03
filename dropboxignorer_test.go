@@ -22,7 +22,7 @@ func sleepToEnsureEvents() {
 	// TODO: fast creating folders lead to missing folder change events
 	// => change library?
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
-		time.Sleep(5 * time.Second)
+		time.Sleep(15 * time.Second)
 	}
 }
 
