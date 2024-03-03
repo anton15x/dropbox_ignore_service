@@ -204,6 +204,8 @@ func (f *fileTester) Rename(oldPath, path string, isIgnored bool, subFoldersIsIg
 	}
 	requireNoError(f.t, err)
 
+	sleepToEnsureEvents()
+
 	m := map[string]bool{}
 
 	waitForRemoveEvents := []string{}

@@ -242,9 +242,9 @@ func (i *DropboxIgnorer) ListenForEvents() {
 							}
 
 							i.ignoredPathsSet.Remove(path)
-							for _, path := range i.ignoredPathsSet.Values {
-								if strings.HasPrefix(path, pathWithSeparatorSuffix) {
-									i.ignoredPathsSet.Remove(path)
+							for _, subFolderPath := range i.ignoredPathsSet.Values {
+								if strings.HasPrefix(subFolderPath, pathWithSeparatorSuffix) {
+									i.ignoredPathsSet.Remove(subFolderPath)
 								}
 							}
 
