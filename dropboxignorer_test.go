@@ -98,12 +98,13 @@ func (f *fileTester) Remove(path string) {
 	requireNoError(f.t, err)
 	delete(f.m, path)
 
+	sleepToEnsureEvents()
+
 	if isIgnored {
 		f.t.Logf("waiting for folder remove event of %s", path)
 		val := readChanTimeout(f.t, f.ignoredPathsChanRemove, 10*time.Second, path)
 		require.Equal(f.t, path, val)
 	}
-	sleepToEnsureEvents()
 }
 
 func (f *fileTester) Mkdir(path string, isIgnored bool) {
@@ -417,7 +418,9 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 			t.Run(test.name+"_variant_"+testVariant.name, func(t *testing.T) {
 				CheckTestParallel(t)
 
-				dropboxDir := MkdirTemp(t, tmpTestDir, test.name)
+				dropboxDir, err := os.MkdirTemp(tmpTestDir, test.name)
+				require.Nil(t, err)
+				defer PrintFileTreeIfTestFailed(t, dropboxDir)
 				ctx, ctxCancel := context.WithTimeout(context.Background(), time.Minute)
 				defer ctxCancel()
 
@@ -446,6 +449,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				ignoreFiles := main.NewSortedStringSet()
 				i, err := main.NewDropboxIgnorer(dropboxDir, testVariant.tryRun, logger, ctx, &wg, ignoredPathsSet, ignoreFiles)
 				requireNoError(t, err)
+				defer PrintDropboxIgnorerStatsIfTestFailed(t, i)
 				wg.Wait()
 
 				ft := NewFileTester(t, i)
@@ -794,7 +798,9 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			CheckTestParallel(t)
 
-			dropboxDir := MkdirTemp(t, tmpTestDir, test.name)
+			dropboxDir, err := os.MkdirTemp(tmpTestDir, test.name)
+			require.Nil(t, err)
+			defer PrintFileTreeIfTestFailed(t, dropboxDir)
 			ctx, ctxCancel := context.WithTimeout(context.Background(), time.Minute)
 			defer ctxCancel()
 
@@ -806,6 +812,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 			ignoreFiles := main.NewSortedStringSet()
 			i, err := main.NewDropboxIgnorer(dropboxDir, tryRun, logger, ctx, &wg, ignoredPathsSet, ignoreFiles)
 			requireNoError(t, err)
+			defer PrintDropboxIgnorerStatsIfTestFailed(t, i)
 			wg.Wait()
 
 			ft := NewFileTester(t, i)
