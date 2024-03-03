@@ -32,8 +32,8 @@ func CheckTestParallel(t *testing.T) {
 	t.Parallel()
 }
 
-func MkdirTemp(t *testing.T, rootDir string) string {
-	path, err := os.MkdirTemp(rootDir, t.Name())
+func MkdirTemp(t *testing.T, rootDir, pattern string) string {
+	path, err := os.MkdirTemp(rootDir, pattern)
 	require.Nil(t, err)
 	t.Cleanup(func() {
 		if t.Failed() {

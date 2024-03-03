@@ -417,7 +417,7 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 			t.Run(test.name+"_variant_"+testVariant.name, func(t *testing.T) {
 				CheckTestParallel(t)
 
-				dropboxDir := MkdirTemp(t, tmpTestDir)
+				dropboxDir := MkdirTemp(t, tmpTestDir, test.name)
 				ctx, ctxCancel := context.WithTimeout(context.Background(), time.Minute)
 				defer ctxCancel()
 
@@ -794,7 +794,7 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			CheckTestParallel(t)
 
-			dropboxDir := MkdirTemp(t, tmpTestDir)
+			dropboxDir := MkdirTemp(t, tmpTestDir, test.name)
 			ctx, ctxCancel := context.WithTimeout(context.Background(), time.Minute)
 			defer ctxCancel()
 
