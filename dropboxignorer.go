@@ -231,10 +231,8 @@ func (i *DropboxIgnorer) ListenForEvents() {
 					_, err := os.Stat(path)
 					if err != nil {
 						if !os.IsNotExist(err) {
-							i.logger.Printf("stat for path failed: %s", err)
+							i.logger.Printf("Error stating file: %s", err)
 						} else {
-							i.ignoredPathsSet.Remove(path)
-
 							// remove is single element only
 							// rename could cause sub directories to get removed
 							// but handle both scenarios es they could have subdirectories
@@ -242,6 +240,8 @@ func (i *DropboxIgnorer) ListenForEvents() {
 							if !strings.HasSuffix(path, string(filepath.Separator)) {
 								pathWithSeparatorSuffix += string(filepath.Separator)
 							}
+
+							i.ignoredPathsSet.Remove(path)
 							for _, path := range i.ignoredPathsSet.Values {
 								if strings.HasPrefix(path, pathWithSeparatorSuffix) {
 									i.ignoredPathsSet.Remove(path)
