@@ -87,7 +87,7 @@ func (i *DropboxIgnorer) checkDirForIgnore(rootPath string, skipRootIgnoreFile b
 		}
 
 		if err := i.ctx.Err(); err != nil {
-			return fmt.Errorf("program is shutting down before finish initial file walk: %w", err)
+			return fmt.Errorf("program is shutting down at file walk: %w", err)
 		}
 
 		if info.IsDir() {
