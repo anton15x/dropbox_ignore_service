@@ -80,6 +80,9 @@ func (i *DropboxIgnorer) DropboxPath() string {
 func (i *DropboxIgnorer) checkDirForIgnore(rootPath string, skipRootIgnoreFile bool) error {
 	err := filepath.WalkDir(rootPath, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
 			return err
 		}
 

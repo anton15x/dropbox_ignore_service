@@ -3,6 +3,7 @@
 package fsnotify
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -104,7 +105,7 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 	}
 	removePathSingle := func(path string) error {
 		err := w.Remove(path)
-		if err != nil {
+		if err != nil && !errors.Is(err, fsnotify.ErrNonExistentWatch) {
 			return err
 		}
 		watchedPaths[path] = nil
@@ -155,16 +156,10 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 						errChan <- fmt.Errorf("error removing path %s after event %s: %w", e.Name, e.Op.String(), err)
 					}
 				}
-				if e.Op.Has(Create) || e.Op.Has(Rename) {
-					err := removePathRecursive(e.Name)
+				if e.Op.Has(Create) || (e.Op.Has(Rename) && strings.HasPrefix(e.Name, rootPathWithSeparator)) {
+					err = addPathRecursive(e.Name)
 					if err != nil {
-						errChan <- fmt.Errorf("error removing path %s after event %s: %w", e.Name, e.Op.String(), err)
-					}
-					if strings.HasPrefix(e.Name, rootPathWithSeparator) {
-						err = addPathRecursive(e.Name)
-						if err != nil {
-							errChan <- fmt.Errorf("error adding path %s after event %s: %w", e.Name, e.Op.String(), err)
-						}
+						errChan <- fmt.Errorf("error adding path %s after event %s: %w", e.Name, e.Op.String(), err)
 					}
 				}
 				f <- e
