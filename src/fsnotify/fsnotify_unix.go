@@ -152,13 +152,14 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 					Op:   Op(val.Op),
 				}
 
-				if e.Op.Has(Remove) || e.Op.Has(Create) || e.Op.Has(Rename) {
+				if e.Op.Has(Create) || e.Op.Has(Rename) || e.Op.Has(Remove) {
 					err := removePathRecursive(e.Name)
 					if err != nil {
 						errChan <- fmt.Errorf("error removing path %s after event %s: %w", e.Name, e.Op.String(), err)
 					}
 				}
-				if e.Op.Has(Create) || (e.Op.Has(Rename) && strings.HasPrefix(e.Name, rootPathWithSeparator)) {
+				if (e.Op.Has(Create) || e.Op.Has(Rename) || e.Op.Has(Remove)) && strings.HasPrefix(e.Name, rootPathWithSeparator) {
+					// event order cloud be incorrect => try add folder also at remove
 					err = addPathRecursive(e.Name)
 					if err != nil {
 						errChan <- fmt.Errorf("error adding path %s after event %s: %w", e.Name, e.Op.String(), err)
