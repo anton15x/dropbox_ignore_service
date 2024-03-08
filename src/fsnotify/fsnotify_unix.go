@@ -141,7 +141,9 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 
 	rootPathWithSeparator := GetFileNameEndingWithSeparator(rootPath)
 
+	errWg.Add(1)
 	go func() {
+		defer errWg.Done()
 		for {
 			val, ok := <-w.Events
 			if ok {
@@ -150,7 +152,7 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 					Op:   Op(val.Op),
 				}
 
-				if e.Op.Has(Remove) || e.Op.Has(Rename) {
+				if e.Op.Has(Remove) || e.Op.Has(Create) || e.Op.Has(Rename) {
 					err := removePathRecursive(e.Name)
 					if err != nil {
 						errChan <- fmt.Errorf("error removing path %s after event %s: %w", e.Name, e.Op.String(), err)
@@ -172,10 +174,6 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 
 	errWg.Add(1)
 	go func() {
-		errWg.Wait()
-		close(errChan)
-	}()
-	go func() {
 		defer errWg.Done()
 		for {
 			val, ok := <-w.Errors
@@ -185,6 +183,10 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 				break
 			}
 		}
+	}()
+	go func() {
+		errWg.Wait()
+		close(errChan)
 	}()
 
 	return &Watcher{
