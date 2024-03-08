@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -21,9 +20,9 @@ import (
 func sleepToEnsureEvents() {
 	// TODO: fast creating folders lead to missing folder change events
 	// => change library?
-	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
-		time.Sleep(4 * time.Second)
-	}
+	// if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+	// 	time.Sleep(4 * time.Second)
+	// }
 }
 
 type testLog struct {
@@ -111,6 +110,7 @@ func (f *fileTester) CreateDropboxignore(filename string, patterns ...string) {
 
 func (f *fileTester) Remove(path string) {
 	isIgnored := f.m[path]
+	f.t.Logf("removing directory (isIgnored: %v) %s", isIgnored, path)
 	err := os.Remove(path)
 	if err != nil {
 		f.t.Logf("remove failed, try again after a short sleep: %s", err)
@@ -130,6 +130,7 @@ func (f *fileTester) Remove(path string) {
 }
 
 func (f *fileTester) Mkdir(path string, isIgnored bool) {
+	f.t.Logf("creating directory (isIgnored: %v) %s", isIgnored, path)
 	requireMkdir(f.t, path)
 
 	sleepToEnsureEvents()
@@ -219,6 +220,7 @@ func (f *fileTester) EditFileStatuses(pathIsIgnoredMap map[string]bool) {
 }
 
 func (f *fileTester) Rename(oldPath, path string, isIgnored bool, subFoldersIsIgnored map[string]bool) {
+	f.t.Logf("renaming directory %s => %s", oldPath, path)
 	err := os.Rename(oldPath, path)
 	if err != nil {
 		f.t.Logf("rename failed, try again after a short sleep: %s", err)

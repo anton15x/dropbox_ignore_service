@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/rjeczalik/notify"
+	"github.com/anton15x/dropbox_ignore_service/src/fsnotify"
 )
 
 const DropboxIgnoreFilename = ".dropboxignore"
@@ -19,8 +19,8 @@ type DropboxIgnorer struct {
 	dropboxPath string
 	tryRun      bool
 
-	ignorePatterns   map[string]IgnorePattern
-	modificationChan chan notify.EventInfo
+	ignorePatterns map[string]IgnorePattern
+	watcher        *fsnotify.Watcher
 
 	ctx    context.Context
 	wg     *sync.WaitGroup
@@ -37,23 +37,21 @@ func NewDropboxIgnorer(dropboxPath string, tryRun bool, logger *log.Logger, ctx 
 	}
 	dropboxPath = dropboxPathAbs
 
-	modificationChan := make(chan notify.EventInfo, 1000)
-
-	i := &DropboxIgnorer{
-		dropboxPath:      dropboxPath,
-		tryRun:           tryRun,
-		ignorePatterns:   map[string]IgnorePattern{},
-		logger:           logger,
-		ctx:              ctx,
-		wg:               wg,
-		modificationChan: modificationChan,
-		ignoreFiles:      ignoreFiles,
-		ignoredPathsSet:  ignoredPathsSet,
+	watcher, err := fsnotify.NewWatcherRecursive(dropboxPath)
+	if err != nil {
+		return nil, fmt.Errorf("error creating file watcher: %w", err)
 	}
 
-	err = notify.Watch(filepath.Join(i.dropboxPath, "..."), i.modificationChan, notify.Create|notify.Rename|notify.Remove|notify.Write)
-	if err != nil {
-		return nil, fmt.Errorf("error watching files: %s", err)
+	i := &DropboxIgnorer{
+		dropboxPath:     dropboxPath,
+		tryRun:          tryRun,
+		ignorePatterns:  map[string]IgnorePattern{},
+		logger:          logger,
+		ctx:             ctx,
+		wg:              wg,
+		watcher:         watcher,
+		ignoreFiles:     ignoreFiles,
+		ignoredPathsSet: ignoredPathsSet,
 	}
 
 	i.logger.Printf("initial walk started for %s", i.dropboxPath)
@@ -172,16 +170,21 @@ func (i *DropboxIgnorer) ListenForEvents() {
 	i.wg.Add(1)
 	go func() {
 		defer i.wg.Done()
-		defer notify.Stop(i.modificationChan)
+		defer func() {
+			err := i.watcher.Close()
+			if err != nil {
+				i.logger.Printf("Error closing watcher: %s", err)
+			}
+		}()
 
 		// Block until an event is received.
 		for {
 			select {
 			case <-i.ctx.Done():
 				return
-			case ei := <-i.modificationChan:
-				i.logger.Printf("got event: %s %s", ei.Event().String(), ei.Path())
-				path := ei.Path()
+			case ei := <-i.watcher.Events:
+				i.logger.Printf("got event: %s %s", ei.Op.String(), ei.Name)
+				path := ei.Name
 				if !strings.HasPrefix(path, i.dropboxPath) {
 					_, after, found := strings.Cut(path, i.dropboxPath)
 					if found {
@@ -191,8 +194,8 @@ func (i *DropboxIgnorer) ListenForEvents() {
 					}
 				}
 
-				event := ei.Event()
-				if event == notify.Create || event == notify.Rename || (event == notify.Write && filepath.Base(path) == DropboxIgnoreFilename) {
+				event := ei.Op
+				if event.Has(fsnotify.Create) || event.Has(fsnotify.Rename) || (event.Has(fsnotify.Write) && filepath.Base(path) == DropboxIgnoreFilename) {
 					// info: rename event is triggered for both, the new AND old name => stat to check if path exists
 					info, err := os.Stat(path)
 					if err != nil {
@@ -225,7 +228,7 @@ func (i *DropboxIgnorer) ListenForEvents() {
 						}
 					}
 				}
-				if event == notify.Remove || event == notify.Rename {
+				if event.Has(fsnotify.Remove) || event.Has(fsnotify.Rename) {
 					// sometimes event order is incorrect => stat and check if file is created
 					// e.g. fast delete file and create is again could swap the order of events
 					_, err := os.Stat(path)
@@ -259,6 +262,8 @@ func (i *DropboxIgnorer) ListenForEvents() {
 						}
 					}
 				}
+			case err := <-i.watcher.Errors:
+				log.Printf("watcher error: %s", err.Error())
 			}
 		}
 	}()

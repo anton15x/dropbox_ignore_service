@@ -6,6 +6,7 @@ require (
 	fyne.io/fyne/v2 v2.4.3
 	fyne.io/systray v1.10.1-0.20231115130155-104f5ef7839e
 	github.com/bmatcuk/doublestar/v4 v4.6.1
+	github.com/fsnotify/fsnotify v1.7.0
 	github.com/pkg/xattr v0.4.9
 	github.com/rjeczalik/notify v0.9.3
 	github.com/spiretechnology/go-autostart/v2 v2.0.0
@@ -15,7 +16,6 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fredbi/uri v1.0.0 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/fyne-io/gl-js v0.0.0-20220119005834-d2da28d9ccfe // indirect
 	github.com/fyne-io/glfw-js v0.0.0-20220120001248-ee7290d23504 // indirect
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect

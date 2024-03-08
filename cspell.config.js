@@ -8,6 +8,7 @@ module.exports = {
         "dropboxignore",
         "doublestar",
         "fyne",
+        "fsnotify",
         "globbing",
         "golangci",
         "golint",
