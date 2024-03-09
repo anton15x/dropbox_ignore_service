@@ -1,4 +1,4 @@
-//go:build !windows && windows
+//go:build !windows
 
 package fsnotify
 
@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,7 +69,6 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 		}
 
 		err := w.Add(path)
-		log.Printf("add watch for path %s: %s", path, err)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return nil
@@ -107,7 +105,6 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 	}
 	removePathSingle := func(path string) error {
 		err := w.Remove(path)
-		log.Printf("removed watch for path %s: %s", path, err)
 		if err != nil && !errors.Is(err, fsnotify.ErrNonExistentWatch) {
 			return err
 		}
@@ -147,6 +144,7 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 	errWg.Add(1)
 	go func() {
 		defer errWg.Done()
+		defer close(f)
 		for {
 			val, ok := <-w.Events
 			if ok {
@@ -154,7 +152,6 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 					Name: val.Name,
 					Op:   Op(val.Op),
 				}
-				log.Printf("got event %s for path %s", e.Op.String(), e.Name)
 
 				if e.Op.Has(Create) || e.Op.Has(Rename) || e.Op.Has(Remove) {
 					err := removePathRecursive(e.Name)
@@ -175,7 +172,6 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 				break
 			}
 		}
-		close(f)
 	}()
 
 	errWg.Add(1)

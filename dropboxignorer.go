@@ -77,6 +77,9 @@ func (i *DropboxIgnorer) TryRun() bool {
 func (i *DropboxIgnorer) DropboxPath() string {
 	return i.dropboxPath
 }
+func (i *DropboxIgnorer) Logger() *log.Logger {
+	return i.logger
+}
 
 func (i *DropboxIgnorer) checkDirForIgnore(rootPath string, skipRootIgnoreFile bool) error {
 	err := filepath.WalkDir(rootPath, func(path string, info fs.DirEntry, err error) error {
@@ -174,16 +177,19 @@ func (i *DropboxIgnorer) ListenForEvents() {
 	i.wg.Add(1)
 	go func() {
 		defer i.wg.Done()
+
+		var listenForEventsWg sync.WaitGroup
 		defer func() {
+			listenForEventsWg.Wait()
 			err := i.watcher.Close()
 			if err != nil {
 				i.logger.Printf("Error closing watcher: %s", err)
 			}
 		}()
 
-		i.wg.Add(1)
+		listenForEventsWg.Add(1)
 		go func() {
-			defer i.wg.Done()
+			defer listenForEventsWg.Done()
 
 			for {
 				select {
@@ -193,7 +199,7 @@ func (i *DropboxIgnorer) ListenForEvents() {
 					if !ok {
 						return
 					}
-					log.Printf("watcher error: %s", err)
+					i.logger.Printf("watcher error: %s", err)
 				}
 			}
 		}()
@@ -277,7 +283,7 @@ func (i *DropboxIgnorer) handleEvent(ei fsnotify.Event) {
 					if strings.HasPrefix(subFolderPath, pathWithSeparatorSuffix) {
 						i.ignoredPathsSet.Remove(subFolderPath)
 					} else {
-						log.Printf("path %s is not a prefix of %s", path, subFolderPath)
+						i.logger.Printf("path %s is not a prefix of %s", path, subFolderPath)
 					}
 				}
 

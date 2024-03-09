@@ -1,3 +1,5 @@
+//go:build windows
+
 package fsnotify
 
 import (
@@ -11,6 +13,7 @@ type Watcher struct {
 	Events <-chan Event
 	Errors <-chan error
 
+	errChan          chan error
 	modificationChan chan notify.EventInfo
 }
 
@@ -38,6 +41,7 @@ func (e *Op) Has(h Op) bool {
 }
 
 func NewWatcherRecursive(path string) (*Watcher, error) {
+	errChan := make(chan error)
 	modificationChan := make(chan notify.EventInfo, 1000)
 
 	err := notify.Watch(filepath.Join(path, "..."), modificationChan, notify.Create|notify.Rename|notify.Remove|notify.Write)
@@ -47,6 +51,7 @@ func NewWatcherRecursive(path string) (*Watcher, error) {
 
 	f := make(chan Event, 1000)
 	go func() {
+		defer close(f)
 		for {
 			val, ok := <-modificationChan
 			if ok {
@@ -58,17 +63,19 @@ func NewWatcherRecursive(path string) (*Watcher, error) {
 				break
 			}
 		}
-		close(f)
 	}()
+
 	return &Watcher{
 		Events: f,
-		Errors: make(<-chan error),
+		Errors: errChan,
 
+		errChan:          errChan,
 		modificationChan: modificationChan,
 	}, nil
 }
 
 func (w *Watcher) Close() error {
 	notify.Stop(w.modificationChan)
+	close(w.errChan)
 	return nil
 }

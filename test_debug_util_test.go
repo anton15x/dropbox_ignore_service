@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"io/fs"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -35,7 +36,21 @@ func printFileTree(t *testing.T, root string) {
 }
 
 func CheckTestParallel(t *testing.T) {
+	if os.Getenv("DISABLE_PARALLEL_TEST") != "" {
+		return
+	}
+
 	t.Parallel()
+}
+
+func CheckTestLarge(t *testing.T) {
+	largeTestEnvVariable := "ENABLE_LARGE_TESTS"
+	if os.Getenv(largeTestEnvVariable) != "" {
+		return
+	}
+
+	t.Skipf("to run large tests, set environment variable %q to 1 (or any other non empty value)", largeTestEnvVariable)
+	t.SkipNow()
 }
 
 func PrintFileTreeIfTestFailed(t *testing.T, path string) {

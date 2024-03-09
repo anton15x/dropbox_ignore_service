@@ -3,6 +3,7 @@ package main_test
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ import (
 func sleepToEnsureEvents() {
 	// TODO: fast creating folders lead to missing folder change events
 	// => change library?
+	// TODO: probably fixed by own fsnotify recursive wrapper, remove in future
 	// if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 	// 	time.Sleep(4 * time.Second)
 	// }
@@ -247,7 +249,7 @@ func (f *fileTester) Rename(oldPath, path string, isIgnored bool, subFoldersIsIg
 
 		newIgnored, ok := subFoldersIsIgnored[newPath]
 		if !ok {
-			require.Equal(f.t, path, newPath, "only_path_is_not_in_subFoldersIsIgnored_map")
+			require.Equal(f.t, path, newPath, "rename path is not in map")
 			newIgnored = isIgnored
 		}
 
@@ -483,8 +485,6 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 						ft.CheckOfPreInit(folder.path, folder.ignored)
 					}
 				}
-
-				i.ListenForEvents()
 
 				if testVariant.initialCreate {
 					for i := len(test.folders) - 1; i >= 0; i-- {
@@ -812,6 +812,69 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 					filepath.Join(root, "my_project2", "a2"): true,
 					filepath.Join(root, "my_project2", "b1"): false,
 				})
+			},
+		},
+		{
+			name: "big_test",
+			edit: func(t *testing.T, root string, ft *fileTester) {
+				CheckTestLarge(t)
+
+				ft.i.Logger().SetOutput(io.Discard)
+
+				ft.CreateDropboxignore(filepath.Join(root, main.DropboxIgnoreFilename), "/my_project*/**/z/[a-i]*")
+				alphabet := "abcdefghijklmnopqrstuvwxyz"
+				var maxCount int
+				var allFiles []string
+				origRoot := filepath.Join(root, "my_project")
+				origRootLen := len(origRoot)
+				ignoredPaths := map[string]bool{}
+				var createFolder func(rootPath string, deep int)
+				createFolder = func(rootPath string, deep int) {
+					ignoreChance := root[len(root)-1] == 'z'
+					for _, c := range alphabet {
+						for i := 0; i < 100; i++ {
+							if maxCount > 0 {
+								maxCount--
+							} else {
+								return
+							}
+							isIgnored := ignoreChance && 'a' <= c && c <= 'i'
+							if deep > 0 {
+								isIgnored = false
+							}
+							path := filepath.Join(rootPath, fmt.Sprintf("%s%d", string(c), i))
+							ft.Mkdir(path, isIgnored)
+
+							pathWithoutOrigRoot := path[origRootLen:]
+							allFiles = append(allFiles, pathWithoutOrigRoot)
+							if isIgnored {
+								ignoredPaths[pathWithoutOrigRoot] = true
+							}
+
+							if deep > 0 {
+								createFolder(path, deep-1)
+							}
+
+						}
+					}
+				}
+				ft.Mkdir(origRoot, false)
+				maxCount = 15000
+				createFolder(origRoot, 1)
+
+				m := map[string]bool{}
+				newRoot := filepath.Join(root, "my_project2")
+				for _, val := range allFiles {
+					m[newRoot+val] = ignoredPaths[val]
+				}
+				ft.Rename(filepath.Join(root, "my_project"), newRoot, false, m)
+
+				m = map[string]bool{}
+				newRoot = filepath.Join(root, "not_my_project")
+				for _, val := range allFiles {
+					m[newRoot+val] = false
+				}
+				ft.Rename(filepath.Join(root, "my_project2"), newRoot, false, m)
 			},
 		},
 	}
