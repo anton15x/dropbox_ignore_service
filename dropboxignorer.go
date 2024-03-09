@@ -180,96 +180,115 @@ func (i *DropboxIgnorer) ListenForEvents() {
 			}
 		}()
 
+		i.wg.Add(1)
+		go func() {
+			defer i.wg.Done()
+
+			for {
+				select {
+				case <-i.ctx.Done():
+					return
+				case err, ok := <-i.watcher.Errors:
+					if !ok {
+						return
+					}
+					log.Printf("watcher error: %s", err)
+				}
+			}
+		}()
+
 		// Block until an event is received.
 		for {
 			select {
 			case <-i.ctx.Done():
 				return
 			case ei := <-i.watcher.Events:
-				i.logger.Printf("got event: %s %s", ei.Op.String(), ei.Name)
-				path := ei.Name
-				if !strings.HasPrefix(path, i.dropboxPath) {
-					_, after, found := strings.Cut(path, i.dropboxPath)
-					if found {
-						path = filepath.Join(i.dropboxPath, after)
-					} else {
-						i.logger.Printf("dropbox %s got event not containing dropbox path: %s", i.dropboxPath, path)
-					}
-				}
-
-				event := ei.Op
-				if event.Has(fsnotify.Create) || event.Has(fsnotify.Rename) || (event.Has(fsnotify.Write) && filepath.Base(path) == DropboxIgnoreFilename) {
-					// info: rename event is triggered for both, the new AND old name => stat to check if path exists
-					info, err := os.Stat(path)
-					if err != nil {
-						if !os.IsNotExist(err) {
-							i.logger.Printf("stat for path failed: %s", err)
-						}
-					} else {
-						if filepath.Base(path) == DropboxIgnoreFilename {
-							added, err := i.addIgnoreFile(path)
-							if err != nil {
-								i.logger.Printf("Error adding ignore file: %s", err)
-							}
-							if added {
-								err = i.checkDirForIgnore(filepath.Dir(path), true)
-								if err != nil {
-									i.logger.Printf("Error handling ignore file subdirectories of %s: %s", path, err)
-								}
-							}
-						} else if i.ShouldPathGetIgnored(path) {
-							err := i.SetIgnoreFlag(path)
-							if err != nil {
-								i.logger.Printf("Error ignoring dir %s: %s", path, err)
-							}
-						} else if info.IsDir() {
-							// created/renamed directory => check for sub directories
-							err = i.checkDirForIgnore(path, false)
-							if err != nil {
-								i.logger.Printf("Error handling ignore file subdirectories of %s: %s", path, err)
-							}
-						}
-					}
-				}
-				if event.Has(fsnotify.Remove) || event.Has(fsnotify.Rename) {
-					// sometimes event order is incorrect => stat and check if file is created
-					// e.g. fast delete file and create is again could swap the order of events
-					_, err := os.Stat(path)
-					if err != nil {
-						if !os.IsNotExist(err) {
-							i.logger.Printf("Error stating file: %s", err)
-						} else {
-							// remove is single element only
-							// rename could cause sub directories to get removed
-							// but handle both scenarios es they could have subdirectories
-							pathWithSeparatorSuffix := path
-							if !strings.HasSuffix(path, string(filepath.Separator)) {
-								pathWithSeparatorSuffix += string(filepath.Separator)
-							}
-
-							i.ignoredPathsSet.Remove(path)
-							for _, subFolderPath := range i.ignoredPathsSet.Values {
-								if strings.HasPrefix(subFolderPath, pathWithSeparatorSuffix) {
-									i.ignoredPathsSet.Remove(subFolderPath)
-								}
-							}
-
-							if filepath.Base(path) == DropboxIgnoreFilename {
-								i.removeIgnoreFile(path)
-							}
-							for _, ignoreFile := range i.ignoreFiles.Values {
-								if strings.HasPrefix(ignoreFile, pathWithSeparatorSuffix) {
-									i.removeIgnoreFile(ignoreFile)
-								}
-							}
-						}
-					}
-				}
-			case err := <-i.watcher.Errors:
-				log.Printf("watcher error: %s", err.Error())
+				i.handleEvent(ei)
 			}
 		}
 	}()
+}
+
+func (i *DropboxIgnorer) handleEvent(ei fsnotify.Event) {
+	i.logger.Printf("got event: %s %s", ei.Op.String(), ei.Name)
+	path := ei.Name
+	if !strings.HasPrefix(path, i.dropboxPath) {
+		_, after, found := strings.Cut(path, i.dropboxPath)
+		if found {
+			path = filepath.Join(i.dropboxPath, after)
+		} else {
+			i.logger.Printf("dropbox %s got event not containing dropbox path: %s", i.dropboxPath, path)
+		}
+	}
+
+	event := ei.Op
+	if event.Has(fsnotify.Create) || event.Has(fsnotify.Rename) || (event.Has(fsnotify.Write) && filepath.Base(path) == DropboxIgnoreFilename) {
+		// info: rename event is triggered for both, the new AND old name => stat to check if path exists
+		info, err := os.Stat(path)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				i.logger.Printf("stat for path failed: %s", err)
+			}
+		} else {
+			if filepath.Base(path) == DropboxIgnoreFilename {
+				added, err := i.addIgnoreFile(path)
+				if err != nil {
+					i.logger.Printf("Error adding ignore file: %s", err)
+				}
+				if added {
+					err = i.checkDirForIgnore(filepath.Dir(path), true)
+					if err != nil {
+						i.logger.Printf("Error handling ignore file subdirectories of %s: %s", path, err)
+					}
+				}
+			} else if i.ShouldPathGetIgnored(path) {
+				err := i.SetIgnoreFlag(path)
+				if err != nil {
+					i.logger.Printf("Error ignoring dir %s: %s", path, err)
+				}
+			} else if info.IsDir() {
+				// created/renamed directory => check for sub directories
+				err = i.checkDirForIgnore(path, false)
+				if err != nil {
+					i.logger.Printf("Error handling ignore file subdirectories of %s: %s", path, err)
+				}
+			}
+		}
+	}
+	if event.Has(fsnotify.Remove) || event.Has(fsnotify.Rename) {
+		// sometimes event order is incorrect => stat and check if file is created
+		// e.g. fast delete file and create is again could swap the order of events
+		_, err := os.Stat(path)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				i.logger.Printf("Error stating file: %s", err)
+			} else {
+				// remove is single element only
+				// rename could cause sub directories to get removed
+				// but handle both scenarios es they could have subdirectories
+				pathWithSeparatorSuffix := path
+				if !strings.HasSuffix(path, string(filepath.Separator)) {
+					pathWithSeparatorSuffix += string(filepath.Separator)
+				}
+
+				i.ignoredPathsSet.Remove(path)
+				for _, subFolderPath := range i.ignoredPathsSet.Values {
+					if strings.HasPrefix(subFolderPath, pathWithSeparatorSuffix) {
+						i.ignoredPathsSet.Remove(subFolderPath)
+					}
+				}
+
+				if filepath.Base(path) == DropboxIgnoreFilename {
+					i.removeIgnoreFile(path)
+				}
+				for _, ignoreFile := range i.ignoreFiles.Values {
+					if strings.HasPrefix(ignoreFile, pathWithSeparatorSuffix) {
+						i.removeIgnoreFile(ignoreFile)
+					}
+				}
+			}
+		}
+	}
 }
 
 func (i *DropboxIgnorer) SetIgnoreFlag(path string) error {
