@@ -5,7 +5,7 @@ import (
 )
 
 type SortedStringSet struct {
-	Values   []string
+	values   []string
 	valueMap map[string]interface{}
 
 	onAdd    []func(string)
@@ -14,9 +14,31 @@ type SortedStringSet struct {
 
 func NewSortedStringSet() *SortedStringSet {
 	return &SortedStringSet{
-		Values:   []string{},
+		values:   []string{},
 		valueMap: map[string]interface{}{},
 	}
+}
+
+func (us *SortedStringSet) Len() int {
+	return len(us.values)
+}
+
+func (us *SortedStringSet) GetOrEmptyString(i int) string {
+	if i < us.Len() {
+		return us.Get(i)
+	}
+
+	return ""
+}
+
+func (us *SortedStringSet) Get(i int) string {
+	return us.values[i]
+}
+
+func (us *SortedStringSet) Values() []string {
+	ret := make([]string, len(us.values))
+	copy(ret, us.values)
+	return ret
 }
 
 func (us *SortedStringSet) Has(val string) bool {
@@ -31,9 +53,9 @@ func (us *SortedStringSet) Add(val string) bool {
 	}
 
 	us.valueMap[val] = nil
-	us.Values = append(us.Values, val)
+	us.values = append(us.values, val)
 
-	slices.Sort(us.Values)
+	slices.Sort(us.values)
 
 	for _, onAdd := range us.onAdd {
 		onAdd(val)
@@ -49,12 +71,11 @@ func (us *SortedStringSet) Remove(val string) bool {
 	}
 
 	delete(us.valueMap, val)
-	for i, cVal := range us.Values {
-		if cVal == val {
-			us.Values = append(us.Values[:i], us.Values[i+1:]...)
-			break
-		}
-	}
+
+	us.values = slices.DeleteFunc(us.values, func(s string) bool {
+		return s == val
+	})
+
 	for _, onRemove := range us.onRemove {
 		onRemove(val)
 	}
@@ -63,7 +84,7 @@ func (us *SortedStringSet) Remove(val string) bool {
 }
 
 func (us *SortedStringSet) RemoveAll() {
-	for _, value := range us.Values {
+	for _, value := range us.values {
 		us.Remove(value)
 	}
 }

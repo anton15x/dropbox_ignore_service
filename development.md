@@ -71,7 +71,18 @@ goweight
 ```bash
 go test -v ./...
 
+# disable cache with -count=1
+go test -v ./... -count=1
+go test -v ./... -count=1 > out.txt 2>&1
+
+# test 10 times to be sure no timing errors occur
+go test -v ./... -count=10 > out.txt 2>&1
+
 go test -v -run ^TestIgnoreFlagModify$ github.com/anton15x/dropbox_ignore_service
+go test -v -run ^TestNewWatcherRecursive$  github.com/anton15x/dropbox_ignore_service/src/fsnotify
+
+ENABLE_LARGE_TESTS=1 go test -v -count=1 -run ^TestDropboxIgnorerIgnoreFileEdit/big_test$ github.com/anton15x/dropbox_ignore_service > out.txt 2>&1
+
 ```
 
 ## running linter:

@@ -17,11 +17,11 @@ func TestSortedStringSet(t *testing.T) {
 			f: func(t *testing.T) {
 				set := main.NewSortedStringSet()
 				require.Equal(t, true, set.Add("B"))
-				require.Equal(t, []string{"B"}, set.Values)
+				require.Equal(t, []string{"B"}, set.Values())
 				require.Equal(t, true, set.Add("A"))
-				require.Equal(t, []string{"A", "B"}, set.Values)
+				require.Equal(t, []string{"A", "B"}, set.Values())
 				require.Equal(t, true, set.Add("C"))
-				require.Equal(t, []string{"A", "B", "C"}, set.Values)
+				require.Equal(t, []string{"A", "B", "C"}, set.Values())
 			},
 		},
 		{
@@ -32,9 +32,9 @@ func TestSortedStringSet(t *testing.T) {
 				require.Equal(t, false, set.Add("A"))
 				require.Equal(t, true, set.Add("B"))
 				require.Equal(t, false, set.Add("B"))
-				require.Equal(t, []string{"A", "B"}, set.Values)
+				require.Equal(t, []string{"A", "B"}, set.Values())
 				require.Equal(t, false, set.Add("A"))
-				require.Equal(t, []string{"A", "B"}, set.Values)
+				require.Equal(t, []string{"A", "B"}, set.Values())
 			},
 		},
 		{
@@ -46,13 +46,13 @@ func TestSortedStringSet(t *testing.T) {
 				require.Equal(t, true, set.Add("C"))
 				require.Equal(t, true, set.Add("D"))
 				require.Equal(t, true, set.Add("E"))
-				require.Equal(t, []string{"A", "B", "C", "D", "E"}, set.Values)
+				require.Equal(t, []string{"A", "B", "C", "D", "E"}, set.Values())
 				require.Equal(t, true, set.Remove("B"))
-				require.Equal(t, []string{"A", "C", "D", "E"}, set.Values)
+				require.Equal(t, []string{"A", "C", "D", "E"}, set.Values())
 				require.Equal(t, true, set.Remove("A"))
-				require.Equal(t, []string{"C", "D", "E"}, set.Values)
+				require.Equal(t, []string{"C", "D", "E"}, set.Values())
 				require.Equal(t, true, set.Remove("E"))
-				require.Equal(t, []string{"C", "D"}, set.Values)
+				require.Equal(t, []string{"C", "D"}, set.Values())
 			},
 		},
 	}

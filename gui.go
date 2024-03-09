@@ -57,18 +57,14 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 
 	ignoredPathsSetList := widget.NewList(
 		func() int {
-			return len(ignoredPathsSet.Values)
+			return ignoredPathsSet.Len()
 		},
 		func() fyne.CanvasObject {
 			return widget.NewLabel("")
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			// multithreading
-			values := ignoredPathsSet.Values
-			name := ""
-			if i < len(values) {
-				name = values[i]
-			}
+			name := ignoredPathsSet.GetOrEmptyString(i)
 
 			label := o.(*widget.Label)
 			label.SetText(name)
@@ -76,7 +72,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	)
 	homeTopLabel := widget.NewLabel("")
 	updateHomeTopLabel := func() {
-		homeTopLabel.SetText(fmt.Sprintf("Ignoring %d elements", len(ignoredPathsSet.Values)))
+		homeTopLabel.SetText(fmt.Sprintf("Ignoring %d elements", ignoredPathsSet.Len()))
 	}
 	ignoredPathsSet.AddChangeEventListener(Debounce(func() {
 		updateHomeTopLabel()
@@ -98,7 +94,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		func() int {
 			// saving values makes it multithreading safe
 			ignoredFileNamesValuesLastLenCall = []string{}
-			for _, val := range ignoredFileNames.Values {
+			for _, val := range ignoredFileNames.Values() {
 				if !showOnlyRemovableOrAllFiles || !ignoredPathsSet.Has(val) {
 					ignoredFileNamesValuesLastLenCall = append(ignoredFileNamesValuesLastLenCall, val)
 				}
@@ -182,7 +178,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		for i, dropboxIgnorer := range dropboxIgnorers {
 			ignoredFilesProgressCurrentDropboxPath.SetText(dropboxIgnorer.dropboxPath)
 
-			err := filepath.Walk(dropboxIgnorer.dropboxPath, func(path string, info fs.FileInfo, err error) error {
+			err := filepath.WalkDir(dropboxIgnorer.dropboxPath, func(path string, info fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -221,7 +217,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 
 	unignoreSelectedPaths := func() {
 		var errTest []string
-		for _, name := range checkedFileNames.Values {
+		for _, name := range checkedFileNames.Values() {
 			err := RemoveDropboxIgnoreFlag(name)
 			if err != nil {
 				log.Printf("error removing ignore flag from path %s: %s", name, err)
@@ -238,7 +234,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		}
 	}
 	ignoredFilesRemoveIgnoreFlagButton := widget.NewButton("", func() {
-		confirmDialog := dialog.NewConfirm("Unignore", fmt.Sprintf("Are you sure to unignore %d paths?", len(checkedFileNames.Values)), func(b bool) {
+		confirmDialog := dialog.NewConfirm("Unignore", fmt.Sprintf("Are you sure to unignore %d paths?", checkedFileNames.Len()), func(b bool) {
 			if b {
 				unignoreSelectedPaths()
 			}
@@ -246,7 +242,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		confirmDialog.Show()
 	})
 	updateIgnoredFilesRemoveIgnoreFlagButton := func() {
-		count := len(checkedFileNames.Values)
+		count := checkedFileNames.Len()
 		ignoredFilesRemoveIgnoreFlagButton.SetText(fmt.Sprintf("(%d) Unignore", count))
 		if count == 0 {
 			ignoredFilesRemoveIgnoreFlagButton.Disable()
@@ -270,7 +266,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	}
 	ignoreFilesSetList := widget.NewList(
 		func() int {
-			return len(ignoreFilesSet.Values)
+			return ignoreFilesSet.Len()
 		},
 		func() fyne.CanvasObject {
 			var button *widget.Button
@@ -326,11 +322,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			// multithreading
-			values := ignoreFilesSet.Values
-			name := ""
-			if i < len(values) {
-				name = values[i]
-			}
+			name := ignoreFilesSet.GetOrEmptyString(i)
 
 			button := o.(*widget.Button)
 			button.SetText(name)

@@ -157,7 +157,7 @@ func mainWithErr() error {
 		dropboxIgnorers[i] = ignorer
 
 		log.Printf("listening for events in dropbox %s", dropboxFolder)
-		ignorer.ListenForEvents(nil)
+		ignorer.ListenForEvents()
 	}
 
 	err = ShowGUI(ctx, dropboxIgnorers, hideGUI, ignoredPathsSet, ignoreFilesSet, logStringSlice)

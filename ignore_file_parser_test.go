@@ -1,8 +1,9 @@
 package main_test
 
 import (
+	"errors"
 	"fmt"
-	"log"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +20,23 @@ import (
 func requireNoError(t *testing.T, err error) {
 	if err != nil {
 		require.Nil(t, err, "errored: %s", err.Error())
+	}
+}
+
+func requireWriteToFile(t *testing.T, f io.Writer, data []byte) {
+	n, err := f.Write(data)
+	requireNoError(t, err)
+	require.Equal(t, len(data), n)
+}
+
+func requireMkdir(t *testing.T, path string) {
+	requireNoError(t, os.Mkdir(path, os.ModePerm))
+}
+
+func requireCloseFile(t *testing.T, f *os.File) {
+	err := f.Close()
+	if err != nil && !errors.Is(err, os.ErrClosed) {
+		requireNoError(t, err)
 	}
 }
 
@@ -301,6 +319,7 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 				createDropboxignore(t, filepath.Join(root, IgnoreFileNameForIsIgnored), "*.exe\nn*.log")
 			},
 			folders: []*iTestFolder{
+				{filepath.Join(".exe"), true},
 				{filepath.Join("go.exe"), true},
 				{filepath.Join("gofmt.exe"), true},
 				{filepath.Join("n.log"), true},
@@ -597,7 +616,7 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 				requireNoError(t, err)
 
 				defer func() {
-					log.Printf("defer of test %s", test.name)
+					t.Logf("defer of test %s", test.name)
 					if t.Failed() {
 						t.Logf("patterns for test %s:", test.name)
 						for i, p := range parsed {
@@ -615,7 +634,7 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 							folderPath = "\\\\?\\" + folderPath
 							rmAllFolders = true
 						}
-						t.Logf("warning: spaces in filename, test case could error")
+						t.Logf("warning: spaces in filename, test case could be instable across platforms")
 					}
 
 					err = os.Mkdir(folderPath, os.ModePerm)

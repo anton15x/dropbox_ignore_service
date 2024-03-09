@@ -92,12 +92,10 @@ dropbox documentation about finding pragmatically the dropbox folder(s):
 https://help.dropbox.com/de-de/installs/locate-dropbox-folder
 
 ## used libraries:
-- [rjeczalik/notify](https://github.com/rjeczalik/notify) filesystem change event listener
+- [rjeczalik/notify](https://github.com/rjeczalik/notify) filesystem change event listener used for windows (recursive watch)
+- [fsnotify/fsnotify](https://github.com/fsnotify/fsnotify) filesystem change event listener used for all other platforms (no recursive watch, own implementation, that watches every subfolder separately)
 - [pkg/xattr](https://github.com/pkg/xattr) read extended file attribute for linux/darwin.
 - [fyne.io/fyne](https://github.com/fyne-io/fyne) Cross platform GUI toolkit in Go inspired by Material Design
 - [spiretechnology/go-autostart](https://github.com/spiretechnology/go-autostart) for setting the executable to autostart with the system
 - [bmatcuk/doublestar](https://github.com/bmatcuk/doublestar) Path pattern matching and globbing supporting doublestar (**) patterns.
 - [stretchr/testify](https://github.com/stretchr/testify) testing of course
-
-## Limitations/TODO:
-- nested .dropboxignore files (currently only one file in root dropbox folder allowed)
