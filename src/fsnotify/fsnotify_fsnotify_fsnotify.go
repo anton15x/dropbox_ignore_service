@@ -1,4 +1,4 @@
-//go:build !windows && windows
+//go:build !windows
 
 package fsnotify
 
