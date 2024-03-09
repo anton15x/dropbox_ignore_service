@@ -49,12 +49,11 @@ func (us *SortedStringSet) Remove(val string) bool {
 	}
 
 	delete(us.valueMap, val)
-	for i, cVal := range us.Values {
-		if cVal == val {
-			us.Values = append(us.Values[:i], us.Values[i+1:]...)
-			break
-		}
-	}
+
+	us.Values = slices.DeleteFunc(us.Values, func(s string) bool {
+		return s == val
+	})
+
 	for _, onRemove := range us.onRemove {
 		onRemove(val)
 	}

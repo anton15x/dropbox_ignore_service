@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -237,7 +238,7 @@ func (i *DropboxIgnorer) handleEvent(ei fsnotify.Event) {
 				}
 				if added {
 					err = i.checkDirForIgnore(filepath.Dir(path), true)
-					if err != nil {
+					if err != nil && !errors.Is(err, i.ctx.Err()) {
 						i.logger.Printf("Error handling ignore file subdirectories of %s: %s", path, err)
 					}
 				}
@@ -249,7 +250,7 @@ func (i *DropboxIgnorer) handleEvent(ei fsnotify.Event) {
 			} else if info.IsDir() {
 				// created/renamed directory => check for sub directories
 				err = i.checkDirForIgnore(path, false)
-				if err != nil {
+				if err != nil && !errors.Is(err, i.ctx.Err()) {
 					i.logger.Printf("Error handling ignore file subdirectories of %s: %s", path, err)
 				}
 			}
@@ -275,6 +276,8 @@ func (i *DropboxIgnorer) handleEvent(ei fsnotify.Event) {
 				for _, subFolderPath := range i.ignoredPathsSet.Values {
 					if strings.HasPrefix(subFolderPath, pathWithSeparatorSuffix) {
 						i.ignoredPathsSet.Remove(subFolderPath)
+					} else {
+						log.Printf("path %s is not a prefix of %s", path, subFolderPath)
 					}
 				}
 
