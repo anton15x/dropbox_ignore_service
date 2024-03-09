@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -617,7 +616,7 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 				requireNoError(t, err)
 
 				defer func() {
-					log.Printf("defer of test %s", test.name)
+					t.Logf("defer of test %s", test.name)
 					if t.Failed() {
 						t.Logf("patterns for test %s:", test.name)
 						for i, p := range parsed {
@@ -635,7 +634,7 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 							folderPath = "\\\\?\\" + folderPath
 							rmAllFolders = true
 						}
-						t.Logf("warning: spaces in filename, test case could error")
+						t.Logf("warning: spaces in filename, test case could be instable across platforms")
 					}
 
 					err = os.Mkdir(folderPath, os.ModePerm)
