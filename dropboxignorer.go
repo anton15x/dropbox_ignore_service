@@ -122,7 +122,7 @@ func (i *DropboxIgnorer) removeIgnoreFile(ignoreFile string) {
 	delete(i.ignorePatterns, filepath.Dir(ignoreFile))
 	i.ignoreFiles.Remove(ignoreFile)
 
-	for _, path := range i.ignoreFiles.Values {
+	for _, path := range i.ignoreFiles.Values() {
 		if !i.ShouldPathGetIgnored(path) {
 			i.ignoredPathsSet.Remove(path)
 		}
@@ -273,7 +273,7 @@ func (i *DropboxIgnorer) handleEvent(ei fsnotify.Event) {
 				}
 
 				i.ignoredPathsSet.Remove(path)
-				for _, subFolderPath := range i.ignoredPathsSet.Values {
+				for _, subFolderPath := range i.ignoredPathsSet.Values() {
 					if strings.HasPrefix(subFolderPath, pathWithSeparatorSuffix) {
 						i.ignoredPathsSet.Remove(subFolderPath)
 					} else {
@@ -284,7 +284,7 @@ func (i *DropboxIgnorer) handleEvent(ei fsnotify.Event) {
 				if filepath.Base(path) == DropboxIgnoreFilename {
 					i.removeIgnoreFile(path)
 				}
-				for _, ignoreFile := range i.ignoreFiles.Values {
+				for _, ignoreFile := range i.ignoreFiles.Values() {
 					if strings.HasPrefix(ignoreFile, pathWithSeparatorSuffix) {
 						i.removeIgnoreFile(ignoreFile)
 					}
