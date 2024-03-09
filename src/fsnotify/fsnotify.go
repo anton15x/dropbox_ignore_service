@@ -1,5 +1,3 @@
-//go:build windows || !windows
-
 package fsnotify
 
 import (
