@@ -48,13 +48,13 @@ func PrintFileTreeIfTestFailed(t *testing.T, path string) {
 func PrintDropboxIgnorerStats(t *testing.T, i *main.DropboxIgnorer) {
 	t.Logf("DropboxPath: %s", i.DropboxPath())
 
-	ignoreFiles := i.IgnoreFiles().Values
+	ignoreFiles := i.IgnoreFiles().Values()
 	t.Logf("ignoreFiles: %d", len(ignoreFiles))
 	for i, file := range ignoreFiles {
 		t.Logf("ignoreFiles[%d]: %s", i, file)
 	}
 
-	ignoredPaths := i.IgnoredPathsSet().Values
+	ignoredPaths := i.IgnoredPathsSet().Values()
 	t.Logf("ignoredPaths: %d", len(ignoreFiles))
 	for i, file := range ignoredPaths {
 		t.Logf("ignoredPaths[%d]: %s", i, file)
