@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -166,6 +167,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		ignoredFilesProgressCurrentPath.Refresh()
 	}, time.Second/60)
 	var ignoredFilesCtxStop context.CancelFunc
+	var ignoredFilesCtxStopError = errors.New("ignoredFilesCtxStopped")
 	reScanIgnoredFiles := func() error {
 		var ignoredFilesCtx context.Context
 		ignoredFilesCtx, ignoredFilesCtxStop = context.WithCancel(guiCtx)
@@ -182,9 +184,8 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 				if err != nil {
 					return err
 				}
-				err = ignoredFilesCtx.Err()
-				if err != nil {
-					return fmt.Errorf("ctx canceled: %s", err)
+				if err = ignoredFilesCtx.Err(); err != nil {
+					return ignoredFilesCtxStopError
 				}
 				ignoredFilesProgressCurrentPath.Text = path
 				ignoredFilesProgressCurrentPathRefreshDebounced()
@@ -464,7 +465,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			ignoredFilesContentError.Hide()
 			go func() {
 				err := reScanIgnoredFiles()
-				if err != nil {
+				if err != nil && !errors.Is(err, ignoredFilesCtxStopError) {
 					log.Printf("Error scanning files: %s", err)
 					ignoredFilesContentError.SetText(fmt.Sprintf("error scanning files: %s", err))
 					ignoredFilesContentError.Show()
