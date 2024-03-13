@@ -4,5 +4,5 @@ Website = "https://github.com/anton15x/dropbox_ignore_service"
   Icon = "assets/icon.png"
   Name = "dropbox_ignore_service"
   ID = "com.github.anton15x.dropbox_ignore_service"
-  Version = "1.0.0"
-  Build = 1
+  Version = "1.0.1"
+  Build = 2
