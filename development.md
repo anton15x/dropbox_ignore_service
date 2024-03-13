@@ -11,27 +11,27 @@ git tag
 
 create tag (add -f to overwrite old one):
 ```bash
-git tag -a v0.0.1
+git tag -a v1.0.0 -m "Release v1.0.0"
 ```
 
 push tag:
 ```bash
-git push origin v0.0.1
+git push origin v1.0.0
 ```
 
 Remove old tag local:
 ```bash
-git tag -d v0.0.1
+git tag -d v1.0.0
 ```
 
 delete remote tag:
 ```bash
-git push --delete origin v0.0.1
+git push --delete origin v1.0.0
 ```
 
 all in one, delete tag local and remote and push again:
 ```bash
-MY_GIT_TAG="v0.0.1"
+MY_GIT_TAG="v1.0.0"
 
 git push --delete origin "$MY_GIT_TAG" && git tag -af "$MY_GIT_TAG" && git push origin "$MY_GIT_TAG" && echo "successfully deleted tag $MY_GIT_TAG"
 ```

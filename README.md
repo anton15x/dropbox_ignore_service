@@ -7,12 +7,12 @@
 [![Go Reference](https://pkg.go.dev/badge/pkg.go.dev/github.com/anton15x/dropbox_ignore_service.svg)](https://pkg.go.dev/github.com/anton15x/dropbox_ignore_service)
 [![Test Status](https://github.com/anton15x/dropbox_ignore_service/actions/workflows/main.yml/badge.svg)](https://github.com/anton15x/dropbox_ignore_service/actions/workflows/main.yml)
 
-Dropbox Ignore Service is tool to exclude files or folders from syncing to dropbox. The files gets specified via the `.dropboxignore` file located in the root of a dropbox folder. 
+Dropbox Ignore Service is tool to exclude files or folders from syncing to dropbox. The files get specified via the `.dropboxignore` file located in the root of a dropbox folder. 
 
-It watches for file/folder changes and notifies the user when a file/folder gets ignored.
+It watches for file/folder changes and notifies the user when a file/folder gets ignored via system notification.
 
 It also offers a GUI:
-- list all currently ignored files
+- list all currently ignored files/folders
 - list ignored files that are not in the .dropboxignore file specified => button to unignore them
 - List .dropboxignore files
 - Logs
@@ -20,19 +20,18 @@ It also offers a GUI:
 
 Cross-platform support (Windows, Linux, and macOS)
 
-The motivation for development was to exclude node_modules automatically after such folder get created.
+## Motivation
+The primary motivation behind developing this tool was to automatically exclude the `node_modules` folder after it gets created. While there are similar projects, most of them lack a GUI.
 
-There are similar projects, but without a GUI.
-
-## How it work?
-Dropbox do not offer a functionality to exclude files from syncing automatically yet. But what is does, is checking a file/folder for a ignore flag which this program sets. The dropbox has an article about that: https://help.dropbox.com/sync/ignored-files .
+## How it works
+Dropbox does not offer a functionality to exclude files from syncing automatically yet. But what is does, is checking a file/folder for a ignore flag which this program sets. The dropbox has an article about that: https://help.dropbox.com/sync/ignored-files .
 
 ## .dropboxignore example
 The `.dropboxignore` tries to be `.gitignore` compliant.
 
 The only difference is that negations (lines that start with a !) are not allowed.
 
-A example for a valid files is this:
+Here is an example of a valid `.dropboxignore` file:
 ```bash
 # ignore the node_modules folder located inside any directory
 node_modules
@@ -52,7 +51,7 @@ my_project/.git
 ```
 
 ## Installation
-You can download the application from the releases, it is a portable single file executable:
+You can download the application from the releases section, it is a portable single file executable:
 ```bash
 https://github.com/anton15x/dropbox_ignore_service/releases
 ```
@@ -61,10 +60,11 @@ https://github.com/anton15x/dropbox_ignore_service/releases
 Requirements:
 - [go](https://go.dev/dl/) >= 1.21.0
 - gcc
-- Fyne dependencies: https://docs.fyne.io/started/
-  - windows: none
-  - linux (ubuntu): `sudo apt-get install -y xorg-dev`
-  - macOX: `brew install --cask xquartz`
+- Fyne dependencies:
+  - windows: No additional dependencies required.
+  - linux (ubuntu): Install `xorg-dev` using the command: `sudo apt-get install -y xorg-dev`
+  - macOS: Install XQuartz using Homebrew: `brew install --cask xquartz`
+  - other: see official documentation: https://docs.fyne.io/started/
 
 ```bash
 go mod download
@@ -79,7 +79,7 @@ fyne package
 - f
   - the path to the dropbox root folder, may be specified multiple times (skips reading dropbox config file)
 - hide-gui
-  - If true, the GUI will not get shown at start (used at autostart with the operation system
+  - If true, the GUI will not get shown at start (used at autostart with the operation system)
 - t
   - A try run (does only prints the files, that would get ignored)
 

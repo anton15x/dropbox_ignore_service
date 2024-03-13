@@ -282,8 +282,6 @@ func (i *DropboxIgnorer) handleEvent(ei fsnotify.Event) {
 				for _, subFolderPath := range i.ignoredPathsSet.Values() {
 					if strings.HasPrefix(subFolderPath, pathWithSeparatorSuffix) {
 						i.ignoredPathsSet.Remove(subFolderPath)
-					} else {
-						i.logger.Printf("path %s is not a prefix of %s", path, subFolderPath)
 					}
 				}
 
