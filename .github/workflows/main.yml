@@ -67,7 +67,7 @@ jobs:
         #run: go get .
         run: go mod download
       - name: Install fyne
-        run: go install fyne.io/fyne/v2/cmd/fyne@latest
+        run: go install fyne.io/fyne/v2/cmd/fyne@v2.4.3
       - name: Generate
         run: go generate ./...
       - name: Test with Go
@@ -105,9 +105,9 @@ jobs:
       - name: Install dependencies
         run: go mod download
       - name: Install fyne
-        run: go install fyne.io/fyne/v2/cmd/fyne@latest
+        run: go install fyne.io/fyne/v2/cmd/fyne@v2.4.3
       - name: Install fyne-cross
-        run: go install github.com/fyne-io/fyne-cross@latest
+        run: go install github.com/fyne-io/fyne-cross@v1.4.0
       - name: Generate
         run: go generate ./...
       - name: Install Docker
@@ -116,7 +116,7 @@ jobs:
       - name: Install Docker
         if: runner.os == 'macOS'
         run: |
-          brew install docker
+          brew install colima docker
           colima start
       - name: Package for Windows
         if: runner.os == 'Linux'

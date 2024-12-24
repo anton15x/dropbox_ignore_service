@@ -304,6 +304,19 @@ func (i *DropboxIgnorer) SetIgnoreFlag(path string) error {
 		return nil
 	}
 
+	hasFlag, err := HasDropboxIgnoreFlag(path)
+	if err != nil {
+		info, err := os.Stat(path)
+		if err != nil {
+			return fmt.Errorf("error stat %s: %w", path, err)
+		}
+		if !info.Mode().IsDir() && !info.Mode().IsRegular() {
+			// only files/directories may have the ignore flag, but not symlinks
+			return nil
+		}
+		return fmt.Errorf("error checking if path %s already has ignore flag: %w", path, err)
+	}
+
 	defer i.ignoredPathsSet.Add(path)
 	if i.tryRun {
 		i.logger.Printf("tryRun: would ignore dir %s", path)
@@ -311,10 +324,6 @@ func (i *DropboxIgnorer) SetIgnoreFlag(path string) error {
 	}
 	i.logger.Printf("ignoring dir %s", path)
 
-	hasFlag, err := HasDropboxIgnoreFlag(path)
-	if err != nil {
-		return fmt.Errorf("error checking if path %s already has ignore flag: %w", path, err)
-	}
 	if hasFlag {
 		// already has flag => do not set again
 		return nil

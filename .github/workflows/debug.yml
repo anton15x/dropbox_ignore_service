@@ -54,7 +54,7 @@ jobs:
         # run: go get .
         run: go mod download
       - name: Install fyne
-        run: go install fyne.io/fyne/v2/cmd/fyne@latest
+        run: go install fyne.io/fyne/v2/cmd/fyne@v2.4.3
       - name: Generate
         run: go generate ./...
       - name: Setup tmate session for debbuging action

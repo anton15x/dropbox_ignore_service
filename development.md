@@ -4,19 +4,30 @@
 https://docs.fyne.io/
 
 ## commit release
-list all tags:
-```bash
-git tag
-```
 
 create tag (add -f to overwrite old one):
 ```bash
-git tag -a v1.0.0 -m "Release v1.0.0"
+git tag -a v1.0.2 -m "Release v1.0.2"
 ```
 
 push tag:
 ```bash
-git push origin v1.0.0
+git push origin v1.0.2
+```
+
+edit FyneApp.toml:
+- set version to same as tag
+- increment build number
+
+create increase version commit:
+```bash
+git commit -m "increase version to 1.0.2"
+````
+
+## tag commands:
+list all tags:
+```bash
+git tag
 ```
 
 Remove old tag local:
@@ -53,7 +64,7 @@ fyne package && ./dropbox_ignore_service
 
 ### cross build:
 ```bash
-go get github.com/fyne-io/fyne-cross && go install github.com/fyne-io/fyne-cross
+go install github.com/fyne-io/fyne-cross@v1.4.0
 fyne-cross windows
 fyne-cross linux
 fyne-cross linux -arch=arm # raspberry
