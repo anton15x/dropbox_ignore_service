@@ -69,7 +69,7 @@ Requirements:
 ```bash
 go mod download
 go generate ./...
-go install fyne.io/fyne/v2/cmd/fyne@latest
+go install fyne.io/fyne/v2/cmd/fyne@v2.4.3
 fyne package
 ```
 

@@ -187,6 +187,18 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 				if err = ignoredFilesCtx.Err(); err != nil {
 					return ignoredFilesCtxStopError
 				}
+
+				if !info.IsDir() {
+					statInfo, err := info.Info()
+					if err != nil {
+						return err
+					}
+					if !statInfo.Mode().IsRegular() {
+						// only files/directories may have the ignore flag, but not symlinks
+						return nil
+					}
+				}
+
 				ignoredFilesProgressCurrentPath.Text = path
 				ignoredFilesProgressCurrentPathRefreshDebounced()
 				isIgnored, err := HasDropboxIgnoreFlag(path)
