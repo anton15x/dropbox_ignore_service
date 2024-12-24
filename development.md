@@ -4,19 +4,30 @@
 https://docs.fyne.io/
 
 ## commit release
-list all tags:
-```bash
-git tag
-```
 
 create tag (add -f to overwrite old one):
 ```bash
-git tag -a v1.0.0 -m "Release v1.0.0"
+git tag -a v1.0.2 -m "Release v1.0.2"
 ```
 
 push tag:
 ```bash
-git push origin v1.0.0
+git push origin v1.0.2
+```
+
+edit FyneApp.toml:
+- set version to same as tag
+- increment build number
+
+create increase version commit:
+```bash
+git commit -m "increase version to 1.0.2"
+````
+
+## tag commands:
+list all tags:
+```bash
+git tag
 ```
 
 Remove old tag local:
