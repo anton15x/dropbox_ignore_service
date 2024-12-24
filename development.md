@@ -53,7 +53,7 @@ fyne package && ./dropbox_ignore_service
 
 ### cross build:
 ```bash
-go get github.com/fyne-io/fyne-cross && go install github.com/fyne-io/fyne-cross
+go install github.com/fyne-io/fyne-cross@v1.4.0
 fyne-cross windows
 fyne-cross linux
 fyne-cross linux -arch=arm # raspberry
