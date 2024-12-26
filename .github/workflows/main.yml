@@ -83,7 +83,6 @@ jobs:
     needs:
       - lint
       - test
-    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     strategy:
       fail-fast: true
       matrix:
@@ -154,7 +153,7 @@ jobs:
         # [✗] macOSX SDK path is mandatory
         if: runner.os == 'macOS'
         run: |
-          fyne-cross darwin -arch=*
+          fyne-cross darwin -arch=* -local
           # zip instruction: https://superuser.com/a/119661
           for folder in fyne-cross/dist/darwin-* ; do
             echo "folder: $folder"
@@ -181,6 +180,7 @@ jobs:
           if-no-files-found: error
 
   create_release:
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     needs:
       - build_release
     runs-on: ubuntu-latest
