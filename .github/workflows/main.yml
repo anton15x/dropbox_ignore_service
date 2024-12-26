@@ -82,16 +82,22 @@ jobs:
   build_release:
     needs:
       - lint
+      - test
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     strategy:
       fail-fast: true
       matrix:
         os: 
           - ubuntu-latest
-          - macos-latest
+          # - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Print release version
+        run: echo "${{ github.ref_name }}" | grep -E "^v[0-9.]+$"
+      - name: Check Tag Version matching FyneApp.toml
+        run: cat FyneApp.toml | grep "^\s*Version\s*=\s*\"$( echo "${{ github.ref_name }}" | sed -e "s/^v//g"  )\"" && echo ok
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -148,7 +154,7 @@ jobs:
         # [✗] macOSX SDK path is mandatory
         if: runner.os == 'macOS'
         run: |
-          fyne-cross darwin -arch=* -local
+          fyne-cross darwin -arch=*
           # zip instruction: https://superuser.com/a/119661
           for folder in fyne-cross/dist/darwin-* ; do
             echo "folder: $folder"
@@ -175,7 +181,6 @@ jobs:
           if-no-files-found: error
 
   create_release:
-    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     needs:
       - build_release
     runs-on: ubuntu-latest
