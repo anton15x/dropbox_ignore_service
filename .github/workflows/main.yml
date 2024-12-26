@@ -82,7 +82,6 @@ jobs:
   build_release:
     needs:
       - lint
-      - test
     strategy:
       fail-fast: true
       matrix:
@@ -108,11 +107,11 @@ jobs:
       - name: Install Docker
         if: runner.os == 'Linux'
         run: curl -fsSL https://get.docker.com | bash -s docker
-      - name: Install Docker
-        if: runner.os == 'macOS'
-        run: |
-          brew install colima docker
-          colima start
+      #- name: Install Docker
+      #  if: runner.os == 'macOS'
+      #  run: |
+      #    brew install colima docker
+      #    colima start
       - name: Package for Windows
         if: runner.os == 'Linux'
         run: |
