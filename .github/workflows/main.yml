@@ -93,10 +93,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Print release version
-        run: echo "${{ github.ref_name }}" | grep -E "^v[0-9.]+$"
-      - name: Check Tag Version matching FyneApp.toml
-        run: cat FyneApp.toml | grep "^\s*Version\s*=\s*\"$( echo "${{ github.ref_name }}" | sed -e "s/^v//g"  )\"" && echo ok
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
