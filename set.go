@@ -1,52 +1,60 @@
 package main
 
 import (
+	"cmp"
 	"slices"
 )
 
-type SortedStringSet struct {
-	values   []string
-	valueMap map[string]interface{}
+type SortedStringSet = SortedSet[string]
 
-	onAdd    []func(string)
-	onRemove []func(string)
+func NewSortedStringSet() *SortedSet[string] {
+	return NewSortedSet[string]()
 }
 
-func NewSortedStringSet() *SortedStringSet {
-	return &SortedStringSet{
-		values:   []string{},
-		valueMap: map[string]interface{}{},
+type SortedSet[T cmp.Ordered] struct {
+	values   []T
+	valueMap map[T]interface{}
+
+	onAdd    []func(T)
+	onRemove []func(T)
+}
+
+func NewSortedSet[T cmp.Ordered]() *SortedSet[T] {
+	return &SortedSet[T]{
+		values:   []T{},
+		valueMap: map[T]interface{}{},
 	}
 }
 
-func (us *SortedStringSet) Len() int {
+func (us *SortedSet[T]) Len() int {
 	return len(us.values)
 }
 
-func (us *SortedStringSet) GetOrEmptyString(i int) string {
+func (us *SortedSet[T]) GetOrEmptyString(i int) T {
 	if i < us.Len() {
 		return us.Get(i)
 	}
 
-	return ""
+	var empty T
+	return empty
 }
 
-func (us *SortedStringSet) Get(i int) string {
+func (us *SortedSet[T]) Get(i int) T {
 	return us.values[i]
 }
 
-func (us *SortedStringSet) Values() []string {
-	ret := make([]string, len(us.values))
+func (us *SortedSet[T]) Values() []T {
+	ret := make([]T, len(us.values))
 	copy(ret, us.values)
 	return ret
 }
 
-func (us *SortedStringSet) Has(val string) bool {
+func (us *SortedSet[T]) Has(val T) bool {
 	_, ok := us.valueMap[val]
 	return ok
 }
 
-func (us *SortedStringSet) Add(val string) bool {
+func (us *SortedSet[T]) Add(val T) bool {
 	_, ok := us.valueMap[val]
 	if ok {
 		return false
@@ -64,7 +72,7 @@ func (us *SortedStringSet) Add(val string) bool {
 	return true
 }
 
-func (us *SortedStringSet) Remove(val string) bool {
+func (us *SortedSet[T]) Remove(val T) bool {
 	_, ok := us.valueMap[val]
 	if !ok {
 		return false
@@ -72,7 +80,7 @@ func (us *SortedStringSet) Remove(val string) bool {
 
 	delete(us.valueMap, val)
 
-	us.values = slices.DeleteFunc(us.values, func(s string) bool {
+	us.values = slices.DeleteFunc(us.values, func(s T) bool {
 		return s == val
 	})
 
@@ -83,20 +91,20 @@ func (us *SortedStringSet) Remove(val string) bool {
 	return true
 }
 
-func (us *SortedStringSet) RemoveAll() {
+func (us *SortedSet[T]) RemoveAll() {
 	for _, value := range us.values {
 		us.Remove(value)
 	}
 }
 
-func (us *SortedStringSet) AddAddEventListener(f func(string)) {
+func (us *SortedSet[T]) AddAddEventListener(f func(T)) {
 	us.onAdd = append(us.onAdd, f)
 }
-func (us *SortedStringSet) AddRemoveEventListener(f func(string)) {
+func (us *SortedSet[T]) AddRemoveEventListener(f func(T)) {
 	us.onRemove = append(us.onRemove, f)
 }
-func (us *SortedStringSet) AddChangeEventListener(f func()) {
-	f2 := func(string) { f() }
+func (us *SortedSet[T]) AddChangeEventListener(f func()) {
+	f2 := func(T) { f() }
 	us.AddAddEventListener(f2)
 	us.AddRemoveEventListener(f2)
 }
