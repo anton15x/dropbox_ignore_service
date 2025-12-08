@@ -75,7 +75,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	updateHomeTopLabel := func() {
 		homeTopLabel.SetText(fmt.Sprintf("Ignoring %d elements", ignoredPathsSet.Len()))
 	}
-	ignoredPathsSet.AddChangeEventListener(Debounce(func() {
+	ignoredPathsSet.AddChangeEventListener(DebounceFyneDo(a, func() {
 		updateHomeTopLabel()
 		ignoredPathsSetList.Refresh()
 	}, time.Second/60))
@@ -134,7 +134,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		},
 	)
 
-	ignoredFilesListContentRefreshDebounced := Debounce(func() {
+	ignoredFilesListContentRefreshDebounced := DebounceFyneDo(a, func() {
 		ignoredFilesListContent.Refresh()
 	}, time.Second/60)
 
@@ -163,7 +163,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	ignoredFileNames.AddRemoveEventListener(func(s string) {
 		checkedFileNames.Remove(s)
 	})
-	ignoredFilesProgressCurrentPathRefreshDebounced := Debounce(func() {
+	ignoredFilesProgressCurrentPathRefreshDebounced := DebounceFyneDo(a, func() {
 		ignoredFilesProgressCurrentPath.Refresh()
 	}, time.Second/60)
 	var ignoredFilesCtxStop context.CancelFunc
@@ -341,7 +341,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			button.SetText(name)
 		},
 	)
-	ignoreFilesSet.AddChangeEventListener(Debounce(func() {
+	ignoreFilesSet.AddChangeEventListener(DebounceFyneDo(a, func() {
 		ignoreFilesSetList.Refresh()
 	}, time.Second/60))
 	dropboxIgnoreFileContent := container.NewBorder(
@@ -369,7 +369,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			label.SetText(data)
 		},
 	)
-	logStringSliceListRefreshDebounced := Debounce(func() {
+	logStringSliceListRefreshDebounced := DebounceFyneDo(a, func() {
 		logStringSliceList.Refresh()
 	}, time.Second/60)
 	logStringSlice.AddChangeEventListener(func() {
@@ -377,7 +377,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	})
 	var logsCopyButton *widget.Button
 	logsCopyButton = widget.NewButton("Copy Log to clipboard", func() {
-		w.Clipboard().SetContent(logStringSlice.String())
+		a.Clipboard().SetContent(logStringSlice.String())
 
 		bakText := logsCopyButton.Text
 		logsCopyButton.SetText(bakText + " copied!")
@@ -473,21 +473,23 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	}
 
 	tabs.OnSelected = func(ti *container.TabItem) {
-		if ti == ignoredFilesTab {
-			ignoredFilesContentError.Hide()
-			go func() {
-				err := reScanIgnoredFiles()
-				if err != nil && !errors.Is(err, ignoredFilesCtxStopError) {
-					log.Printf("Error scanning files: %s", err)
-					ignoredFilesContentError.SetText(fmt.Sprintf("error scanning files: %s", err))
-					ignoredFilesContentError.Show()
+		FyneDo(a, func() {
+			if ti == ignoredFilesTab {
+				ignoredFilesContentError.Hide()
+				go func() {
+					err := reScanIgnoredFiles()
+					if err != nil && !errors.Is(err, ignoredFilesCtxStopError) {
+						log.Printf("Error scanning files: %s", err)
+						ignoredFilesContentError.SetText(fmt.Sprintf("error scanning files: %s", err))
+						ignoredFilesContentError.Show()
+					}
+				}()
+			} else {
+				if ignoredFilesCtxStop != nil {
+					ignoredFilesCtxStop()
 				}
-			}()
-		} else {
-			if ignoredFilesCtxStop != nil {
-				ignoredFilesCtxStop()
 			}
-		}
+		})
 	}
 	w.SetContent(tabs)
 
@@ -518,7 +520,7 @@ func ShowError(errorText string) {
 
 	var copyErrorButton *widget.Button
 	copyErrorButton = widget.NewButton("Copy Error to clipboard", func() {
-		w.Clipboard().SetContent(errorText)
+		a.Clipboard().SetContent(errorText)
 
 		bakText := copyErrorButton.Text
 		copyErrorButton.SetText("copied!")

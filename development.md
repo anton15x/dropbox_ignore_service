@@ -64,7 +64,7 @@ fyne package && ./dropbox_ignore_service
 
 ### cross build:
 ```bash
-go install github.com/fyne-io/fyne-cross@v1.4.0
+go install github.com/fyne-io/fyne-cross@v1.6.1
 fyne-cross windows
 fyne-cross linux
 fyne-cross linux -arch=arm # raspberry
@@ -109,3 +109,7 @@ https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.managem
 linux:
 sudo apt-get install attr
 sudo apt-get install xattr
+
+# TODO:
+## i18n
+https://github.com/nicksnyder/go-i18n

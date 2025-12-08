@@ -4,7 +4,22 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"fyne.io/fyne/v2"
 )
+
+func FyneDo(a fyne.App, f func()) {
+	// do internal of fyne.Do
+	a.Driver().DoFromGoroutine(func() {
+		f()
+	}, false)
+}
+
+func DebounceFyneDo(a fyne.App, f func(), t time.Duration) func() {
+	return Debounce(func() {
+		FyneDo(a, f)
+	}, t)
+}
 
 func Debounce(f func(), t time.Duration) func() {
 	return DebounceWithSleepFunc(f, func() { time.Sleep(t) })
