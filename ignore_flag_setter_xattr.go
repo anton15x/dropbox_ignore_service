@@ -20,6 +20,8 @@ func handleXattrErr(err error) error {
 	return err
 }
 
+var implementation *implementationXattr
+
 type implementationXattr struct {
 }
 
@@ -74,5 +76,3 @@ func (*implementationXattr) HasFlag(path string) (bool, error) {
 
 	return bytes.Equal([]byte("1"), b), nil
 }
-
-var implementation *implementationXattr

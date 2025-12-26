@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+	"time"
 )
 
 func getDropboxFoldersEnsured(cmdFolders []string) ([]string, error) {
@@ -149,6 +150,7 @@ func mainWithErr() error {
 	ignoreFilesSet := NewSortedStringSet()
 	dropboxIgnorers := make([]*DropboxIgnorer, len(dropboxFolders))
 
+	startTime := time.Now()
 	for i, dropboxFolder := range dropboxFolders {
 		ignorer, err := NewDropboxIgnorer(dropboxFolder, tryRun, log.Default(), ctx, &wg, ignoredPathsSet, ignoreFilesSet)
 		if err != nil {
@@ -159,6 +161,8 @@ func mainWithErr() error {
 		log.Printf("listening for events in dropbox %s", dropboxFolder)
 		ignorer.ListenForEvents()
 	}
+	endTime := time.Since(startTime)
+	log.Printf("init dropbox ignorer took %s", endTime.String())
 
 	err = ShowGUI(ctx, dropboxIgnorers, hideGUI, ignoredPathsSet, ignoreFilesSet, logStringSlice)
 	if err != nil {
