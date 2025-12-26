@@ -109,7 +109,11 @@ func (i *DropboxIgnorer) checkDirForIgnore(rootPath string, skipRootIgnoreFile b
 				i.logger.Printf("Error ignoring dir %s: %s", path, err)
 			}
 
-			return filepath.SkipDir
+			if info.IsDir() {
+				// only return true, if is is a directory
+				// if this would be a file, the remaining files of the current directory would also get skipped
+				return filepath.SkipDir
+			}
 		}
 
 		return nil
