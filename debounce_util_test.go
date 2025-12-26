@@ -21,18 +21,29 @@ func TestDebounce(t *testing.T) {
 		{
 			name: "called_once",
 			f: func(t *testing.T) {
-				called := 0
-				debounced := main.Debounce(func() {
-					called++
-				}, time.Hour)
+				called := make(chan int, 10)
+				var sleepWg sync.WaitGroup
+				sleepWg.Add(1)
+				firstCall := true
+				var wg sync.WaitGroup
+				wg.Add(1)
+				debounced := main.DebounceWithSleepFunc(func(val int) {
+					called <- val
+				}, func() {
+					if firstCall {
+						firstCall = false
+						sleepWg.Done()
+						wg.Wait()
+					}
+				})
 
-				require.Equal(t, 0, called)
-				debounced()
-				require.Equal(t, 1, called)
-				debounced()
-				require.Equal(t, 1, called)
-				debounced()
-				require.Equal(t, 1, called)
+				debounced(1)
+				debounced(2)
+				debounced(3)
+				require.Equal(t, 1, <-called)
+				sleepWg.Wait()
+				require.Len(t, called, 0)
+				wg.Done()
 			},
 		},
 		{
@@ -43,8 +54,10 @@ func TestDebounce(t *testing.T) {
 				ctx, ctxStop := context.WithCancel(context.Background())
 				defer ctxStop()
 
-				debounced := main.DebounceWithSleepFunc(func() {
+				var wg sync.WaitGroup
+				debounced := main.DebounceWithSleepFunc(func(val int) {
 					called++
+					wg.Done()
 				}, func() {
 					sleepCalled++
 					<-ctx.Done()
@@ -52,7 +65,10 @@ func TestDebounce(t *testing.T) {
 				})
 
 				require.Equal(t, 0, called)
-				debounced()
+
+				wg.Add(1)
+				debounced(1)
+				wg.Wait()
 				require.Equal(t, 1, called)
 
 				ctxStop()
@@ -71,7 +87,7 @@ func TestDebounce(t *testing.T) {
 				defer ctxStop()
 				var wg sync.WaitGroup
 
-				debounced := main.DebounceWithSleepFunc(func() {
+				debounced := main.DebounceWithSleepFunc(func(val int) {
 					called++
 					wg.Done()
 				}, func() {
@@ -80,11 +96,13 @@ func TestDebounce(t *testing.T) {
 					ctx, ctxStop = context.WithCancel(context.Background())
 				})
 
-				wg.Add(2)
 				require.Equal(t, 0, called)
-				debounced()
+				wg.Add(1)
+				debounced(1)
+				wg.Wait()
 				require.Equal(t, 1, called)
-				debounced()
+				wg.Add(1)
+				debounced(2)
 				require.Equal(t, 1, called)
 
 				ctxStop()
@@ -107,7 +125,7 @@ func TestDebounce(t *testing.T) {
 				defer ctxStop()
 				var wg sync.WaitGroup
 
-				debounced := main.DebounceWithSleepFunc(func() {
+				debounced := main.DebounceWithSleepFunc(func(val int) {
 					called++
 					wg.Done()
 				}, func() {
@@ -116,15 +134,17 @@ func TestDebounce(t *testing.T) {
 					ctx, ctxStop = context.WithCancel(context.Background())
 				})
 
-				wg.Add(2)
 				require.Equal(t, 0, called)
-				debounced()
+				wg.Add(1)
+				debounced(1)
+				wg.Wait()
 				require.Equal(t, 1, called)
-				debounced()
+				debounced(2)
 				require.Equal(t, 1, called)
-				debounced()
+				debounced(3)
 				require.Equal(t, 1, called)
 
+				wg.Add(1)
 				ctxStop()
 				wg.Wait()
 				require.Equal(t, 2, called)
@@ -145,7 +165,7 @@ func TestDebounce(t *testing.T) {
 				defer ctxStop()
 				var wg sync.WaitGroup
 
-				debounced := main.DebounceWithSleepFunc(func() {
+				debounced := main.DebounceWithSleepFunc(func(val int) {
 					called++
 					wg.Done()
 				}, func() {
@@ -154,17 +174,19 @@ func TestDebounce(t *testing.T) {
 					ctx, ctxStop = context.WithCancel(context.Background())
 				})
 
-				wg.Add(2)
 				require.Equal(t, 0, called)
-				debounced()
+				wg.Add(1)
+				debounced(1)
+				wg.Wait()
 				require.Equal(t, 1, called)
-				debounced()
+				debounced(2)
 				require.Equal(t, 1, called)
-				debounced()
+				debounced(3)
 				require.Equal(t, 1, called)
-				debounced()
+				debounced(4)
 				require.Equal(t, 1, called)
 
+				wg.Add(1)
 				ctxStop()
 				wg.Wait()
 				require.Equal(t, 2, called)

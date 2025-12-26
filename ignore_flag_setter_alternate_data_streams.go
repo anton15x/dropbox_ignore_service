@@ -3,9 +3,12 @@
 package main
 
 import (
-	"bytes"
+	"errors"
+	"io"
 	"os"
 )
+
+var implementation *implementationAlternateDataStreams
 
 type implementationAlternateDataStreams struct{}
 
@@ -24,14 +27,22 @@ func (*implementationAlternateDataStreams) RemoveFlag(path string) error {
 	return nil
 }
 func (*implementationAlternateDataStreams) HasFlag(path string) (bool, error) {
-	b, err := os.ReadFile(path + ":com.dropbox.ignored")
+	f, err := os.Open(path + ":com.dropbox.ignored")
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
 		return false, err
 	}
-	return bytes.Equal(b, []byte("1")), nil
-}
+	defer f.Close()
 
-var implementation *implementationAlternateDataStreams
+	var b [2]byte
+	read, err := f.Read(b[:])
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return false, nil
+		}
+		return false, err
+	}
+	return read == 1 && b[0] == '1', nil
+}
