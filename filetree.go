@@ -8,8 +8,10 @@ import (
 	"iter"
 	"log"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	fyne "fyne.io/fyne/v2"
@@ -44,6 +46,14 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 	var scheduleRefresh func()
 
 	m := util.NewSafeMap[string, *Entry]()
+	searchM := util.NewSafeMap[string, *Entry]()
+	var searchActive atomic.Bool
+	getMap := func() *util.SafeMap[string, *Entry] {
+		if searchActive.Load() {
+			return searchM
+		}
+		return m
+	}
 
 	type headerEntry struct {
 		Name                      string
@@ -92,7 +102,7 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 
 	tree := widget.NewTree(
 		func(id widget.TreeNodeID) []widget.TreeNodeID {
-			curEntry, ok := m.Load(id)
+			curEntry, ok := getMap().Load(id)
 			if !ok {
 				return nil
 			}
@@ -123,7 +133,7 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 			return ids
 		},
 		func(id widget.TreeNodeID) bool {
-			val, ok := m.Load(id)
+			val, ok := getMap().Load(id)
 			if !ok {
 				return false
 			}
@@ -157,7 +167,7 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 			), nil)
 		},
 		func(id widget.TreeNodeID, branch bool, o fyne.CanvasObject) {
-			curEntry, ok := m.Load(id)
+			curEntry, ok := getMap().Load(id)
 			if !ok {
 				curEntry = &dummyEntry
 			}
@@ -263,9 +273,138 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 		headerButtons[i] = button
 	}
 
+	separateFileAndFolders := widget.NewCheck("seperate", func(b bool) {
+		separateFoldersAndFiles = b
+
+		scheduleRefresh()
+	})
+	separateFileAndFolders.Checked = separateFoldersAndFiles
+
+	searchTextInput := widget.NewEntry()
+	searchTextInput.SetPlaceHolder("Enter search text...")
+
+	flattenCheckBox := widget.NewCheck("flatten", nil)
+	regexCheckBox := widget.NewCheck("regex", nil)
+
+	searchTextInput.Validator = func(s string) error {
+		if regexCheckBox.Checked {
+			_, err := regexp.Compile(s)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	updateSearch := Debounce(func() {
+		val := searchTextInput.Text
+		flatten := flattenCheckBox.Checked
+		useRegex := regexCheckBox.Checked
+
+		var valRegex *regexp.Regexp
+		if val != "" {
+			baseVal := val
+			if !useRegex {
+				baseVal = regexp.QuoteMeta(val)
+			}
+			var err error
+			valRegex, err = regexp.Compile(baseVal)
+			if err != nil {
+				valRegex = nil
+				log.Printf("error create regex of %s: %s", baseVal, err)
+			}
+		}
+
+		isSearchActive := valRegex != nil || flatten
+		searchActive.Store(isSearchActive)
+		searchM.Clear()
+		if isSearchActive {
+			root, ok := m.Load("")
+			if ok {
+				var f func(originalEntry, p *Entry)
+				f = func(originalEntry, p *Entry) {
+					e := &Entry{
+						Name:     originalEntry.Name,
+						ModeTime: originalEntry.ModeTime,
+						IsDir:    originalEntry.IsDir,
+						Error:    originalEntry.Error,
+						Parent:   p,
+					}
+					if !originalEntry.IsDir {
+						e.Size = originalEntry.Size
+					}
+
+					matches := valRegex == nil || valRegex.MatchString(originalEntry.Name)
+					if matches || e.IsDir {
+						np := e
+						if flatten && p != nil {
+							np = p
+						}
+
+						for c := range ConcatSeq(originalEntry.Files, originalEntry.Folders) {
+							f(c, np)
+						}
+					}
+
+					if !matches && e.FileCount == 0 {
+						return
+					}
+					if p != nil {
+						p.FileCount += e.FileCount
+						p.FolderCount += e.FolderCount
+						if e.IsDir {
+							p.Folders = append(p.Folders, e)
+							p.FolderCount++
+						} else {
+							p.Files = append(p.Files, e)
+							p.FileCount++
+						}
+						p.Size += e.Size
+					}
+
+					searchM.Store(e.Name, e)
+				}
+				f(root, nil)
+			}
+		}
+
+		scheduleRefresh()
+	}, time.Second/10)
+	updateSearchIfActive := func() {
+		if searchActive.Load() {
+			updateSearch()
+			return
+		}
+
+		scheduleRefresh()
+	}
+
+	flattenCheckBox.OnChanged = func(b bool) {
+		updateSearch()
+	}
+	regexCheckBox.OnChanged = func(b bool) {
+		if b {
+			searchTextInput.Validate()
+		}
+		updateSearch()
+	}
+	searchTextInput.OnChanged = func(s string) {
+		updateSearch()
+	}
+
 	content := container.NewBorder(
 		container.NewBorder(
-			nil,
+			container.NewBorder(
+				nil,
+				nil,
+				separateFileAndFolders,
+				container.NewHBox(
+					regexCheckBox,
+					flattenCheckBox,
+				),
+				searchTextInput,
+			),
 			nil,
 			nil,
 			container.New(
@@ -352,7 +491,7 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 					}
 				}
 
-				scheduleRefresh()
+				updateSearchIfActive()
 
 				if e.IsDir {
 					if alreadyExisted {
@@ -367,7 +506,7 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 			}
 		}
 
-		scheduleRefresh()
+		updateSearchIfActive()
 
 		duration := time.Since(startTime)
 		log.Printf("file tree scan took %s", duration.String())
