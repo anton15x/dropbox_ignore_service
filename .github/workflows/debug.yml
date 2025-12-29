@@ -14,11 +14,11 @@ on:
       go-version:
         type: string
         description: "Go version"
-        default: "1.21.x"
+        default: "1.24.x"
       node-version:
         type: string
         description: "Node version"
-        default: "20.x"
+        default: "24.x"
       install-dependencies:
         type: boolean
         description: "Install Dependencies"
@@ -32,19 +32,15 @@ jobs:
       - name: "Testing on ${{ runner.os }}"
         run: echo "running on ${{ runner.os }}"
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Go ${{ inputs.go-version }}
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version }}
       - name: Setup Node.js ${{ inputs.node-version }} for use with actions
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.node-version }}
-      - name: Install X11 dependencies on MacOS
-        if: runner.os == 'macOS' && inputs.install-dependencies
-        run: |
-          brew install --cask xquartz
       - name: Install X11 dependencies on Linux
         if: runner.os == 'Linux' && inputs.install-dependencies
         run: |

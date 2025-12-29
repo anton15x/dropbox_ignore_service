@@ -63,8 +63,7 @@ Requirements:
 - Fyne dependencies:
   - windows: No additional dependencies required.
   - linux (ubuntu): Install `xorg-dev` using the command: `sudo apt-get install -y xorg-dev`
-  - macOS: Install XQuartz using Homebrew: `brew install --cask xquartz`
-  - other: see official documentation: https://docs.fyne.io/started/
+  - other: see official documentation: https://docs.fyne.io/started/quick/
 
 ```bash
 go mod download
