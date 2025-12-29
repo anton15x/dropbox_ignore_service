@@ -18,6 +18,7 @@ module.exports = {
         "golangci",
         "golint",
         "gofmt",
+        "GOPATH",
         "goweight",
         "Hinterhofer",
         "jondot",
