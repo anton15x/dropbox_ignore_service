@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/anton15x/dropbox_ignore_service/src/fsnotify"
+	"github.com/anton15x/dropbox_ignore_service/src/util"
 )
 
 const DropboxIgnoreFilename = ".dropboxignore"
@@ -27,11 +28,11 @@ type DropboxIgnorer struct {
 	wg     *sync.WaitGroup
 	logger *log.Logger
 
-	ignoreFiles     *SortedStringSet
-	ignoredPathsSet *SortedStringSet
+	ignoreFiles     *util.SortedStringSet
+	ignoredPathsSet *util.SortedStringSet
 }
 
-func NewDropboxIgnorer(dropboxPath string, tryRun bool, logger *log.Logger, ctx context.Context, wg *sync.WaitGroup, ignoredPathsSet *SortedStringSet, ignoreFiles *SortedStringSet) (*DropboxIgnorer, error) {
+func NewDropboxIgnorer(dropboxPath string, tryRun bool, logger *log.Logger, ctx context.Context, wg *sync.WaitGroup, ignoredPathsSet *util.SortedStringSet, ignoreFiles *util.SortedStringSet) (*DropboxIgnorer, error) {
 	dropboxPathAbs, err := filepath.Abs(dropboxPath)
 	if err != nil {
 		return nil, fmt.Errorf("error getting absolute path of %s: %w", dropboxPath, err)
@@ -65,10 +66,10 @@ func NewDropboxIgnorer(dropboxPath string, tryRun bool, logger *log.Logger, ctx 
 	return i, nil
 }
 
-func (i *DropboxIgnorer) IgnoredPathsSet() *SortedStringSet {
+func (i *DropboxIgnorer) IgnoredPathsSet() *util.SortedStringSet {
 	return i.ignoredPathsSet
 }
-func (i *DropboxIgnorer) IgnoreFiles() *SortedStringSet {
+func (i *DropboxIgnorer) IgnoreFiles() *util.SortedStringSet {
 	return i.ignoreFiles
 }
 func (i *DropboxIgnorer) TryRun() bool {

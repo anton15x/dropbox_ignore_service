@@ -61,7 +61,7 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 	errChan := make(chan error, 1000)
 	var errWg sync.WaitGroup
 
-	watchedPaths := map[string]interface{}{}
+	watchedPaths := map[string]struct{}{}
 	addPath := func(path string) error {
 		_, ok := watchedPaths[path]
 		if ok {
@@ -76,7 +76,7 @@ func NewWatcherRecursive(rootPath string) (*Watcher, error) {
 
 			return err
 		}
-		watchedPaths[path] = nil
+		watchedPaths[path] = struct{}{}
 
 		return nil
 	}

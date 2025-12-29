@@ -77,6 +77,14 @@ func (m *SafeMap[K, V]) Range(f func(key K, value V) bool) {
 }
 
 // custom methods
+
+// Has checks if the key exists
+// it skips casting the value to V
+func (m *SafeMap[K, V]) Has(key K) (ok bool) {
+	_, ok = m.m.Load(key)
+	return ok
+}
+
 // Iter iterates only over keys and values (use Keys or Values if only one is needed)
 func (m *SafeMap[K, V]) Iter() iter.Seq2[K, V] {
 	return func(yield func(K, V) bool) {
