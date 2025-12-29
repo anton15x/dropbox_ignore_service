@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"cmp"
@@ -15,7 +15,7 @@ func NewSortedStringSet() *SortedSet[string] {
 type SortedSet[T cmp.Ordered] struct {
 	mu       sync.RWMutex
 	values   []T
-	valueMap map[T]interface{}
+	valueMap map[T]struct{}
 
 	onAdd    []func(T)
 	onRemove []func(T)
@@ -24,7 +24,7 @@ type SortedSet[T cmp.Ordered] struct {
 func NewSortedSet[T cmp.Ordered]() *SortedSet[T] {
 	return &SortedSet[T]{
 		values:   []T{},
-		valueMap: map[T]interface{}{},
+		valueMap: map[T]struct{}{},
 	}
 }
 
@@ -86,7 +86,7 @@ func (us *SortedSet[T]) Add(val T) bool {
 		i, _ := slices.BinarySearch(us.values, val)
 		us.values = slices.Insert(us.values, i, val)
 	}
-	us.valueMap[val] = nil
+	us.valueMap[val] = struct{}{}
 
 	for _, onAdd := range us.onAdd {
 		onAdd(val)

@@ -7,8 +7,10 @@ import (
 	"io/fs"
 	"log"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -21,8 +23,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"fyne.io/systray"
 	"github.com/anton15x/dropbox_ignore_service/src/filewalkfast"
-	"github.com/anton15x/dropbox_ignore_service/src/open"
 	"github.com/anton15x/dropbox_ignore_service/src/util"
+	"github.com/c2h5oh/datasize"
 	fynetooltip "github.com/dweymouth/fyne-tooltip"
 	ttwidget "github.com/dweymouth/fyne-tooltip/widget"
 )
@@ -47,7 +49,7 @@ func appNameToUserDisplay(a fyne.App) string {
 	return ret
 }
 
-func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI bool, ignoredPathsSet *SortedStringSet, ignoreFilesSet *SortedStringSet, logStringSlice *logStringSliceStruct) error {
+func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI bool, ignoredPathsSet *util.SortedStringSet, ignoreFilesSet *util.SortedStringSet, logStringSlice *logStringSliceStruct) error {
 	guiCtx, guiCtxCancel := context.WithCancel(ctx)
 	defer guiCtxCancel()
 
@@ -60,43 +62,94 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	w := a.NewWindow(appNameToUserDisplay(a))
 	w.Resize(fyne.NewSize(1200, 800))
 
+	type ExtendedFileInfo struct {
+		Size datasize.ByteSize
+		Err  error
+	}
+	ignoresFileExtendedInfos := util.NewSafeMap[string, ExtendedFileInfo]()
+
 	ignoredPathsSetList := widget.NewList(
 		func() int {
 			return ignoredPathsSet.Len()
 		},
 		func() fyne.CanvasObject {
-			return widget.NewLabel("")
+			nameLabel := widget.NewLabel("")
+			return NewRightClickableContainer(container.NewBorder(
+				nil,
+				nil,
+				nil,
+				widget.NewLabel(""), // size
+				nameLabel,           // name
+			), func(e *fyne.PointEvent, c *RightClickableContainer) {
+				RightClickOpenPathActionsContextMenu(nameLabel.Text, e, c)
+			})
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			// multithreading
 			name := ignoredPathsSet.GetOrEmptyString(i)
+			info, ok := ignoresFileExtendedInfos.Load(name)
 
-			label := o.(*widget.Label)
-			label.SetText(name)
+			rightClickContainer := o.(*RightClickableContainer)
+			container := rightClickContainer.Content.(*fyne.Container)
+			label := container.Objects[0].(*widget.Label)
+			sizeLabel := container.Objects[1].(*widget.Label)
+
+			changed := false
+			if label.Text != name {
+				changed = true
+				label.SetText(name)
+			}
+
+			var sizeLabelText string
+			if !ok {
+				sizeLabelText = "?"
+			} else if info.Err != nil {
+				sizeLabelText = info.Err.Error()
+			} else {
+				sizeLabelText = info.Size.HumanReadable()
+			}
+			if sizeLabel.Text != sizeLabelText {
+				changed = true
+				sizeLabel.SetText(sizeLabelText)
+			}
+
+			if changed {
+				// if the text size changes, the container also must update
+				container.Refresh()
+			}
 		},
 	)
 	homeTopLabel := widget.NewLabel("")
 	updateHomeTopLabel := func() {
 		homeTopLabel.SetText(fmt.Sprintf("Ignoring %d elements", ignoredPathsSet.Len()))
 	}
-	ignoredPathsSet.AddChangeEventListener(Debounce(func() {
+	ignoredPathsListRefreshDebounced := Debounce(func() {
 		FyneDoSync(a, func() {
 			updateHomeTopLabel()
 			ignoredPathsSetList.Refresh()
 		})
-	}, time.Second/60))
+	}, time.Second/60)
+	ignoredPathsSet.AddChangeEventListener(ignoredPathsListRefreshDebounced)
 	updateHomeTopLabel()
+	refreshIgnoredPathsSet := widget.NewButtonWithIcon("refresh sizes", theme.ViewRefreshIcon(), nil)
 	homeContent := container.NewBorder(
-		homeTopLabel,
+		container.NewBorder(
+			nil,
+			nil,
+			homeTopLabel,
+			refreshIgnoredPathsSet,
+		),
 		nil, nil, nil,
 		ignoredPathsSetList,
 	)
-	homeTab := container.NewTabItemWithIcon("Home", theme.SettingsIcon(), homeContent)
+	homeTab := container.NewTabItemWithIcon("Home", theme.HomeIcon(), homeContent)
 
 	showOnlyRemovableOrAllFiles := true
-	ignoredFileNames := NewSortedStringSet()
-	checkedFileNames := NewSortedStringSet()
+	ignoredFileNames := util.NewSortedStringSet()
+	checkedFileNames := util.NewSortedStringSet()
 	ignoredFileNamesValuesLastLenCall := []string{}
+	var unignoreSelectedPaths func(paths []string)
+
 	ignoredFilesListContent := widget.NewList(
 		func() int {
 			// saving values makes it multithreading safe
@@ -109,16 +162,47 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			return len(ignoredFileNamesValuesLastLenCall)
 		},
 		func() fyne.CanvasObject {
-			var check *widget.Check
-			check = widget.NewCheck("", func(b bool) {
-				name := check.Text
+			nameLabel := widget.NewLabel("")
+			check := widget.NewCheck("", func(b bool) {
+				name := nameLabel.Text
 				if b {
 					checkedFileNames.Add(name)
 				} else {
 					checkedFileNames.Remove(name)
 				}
 			})
-			return check
+			rightClickContainer := NewRightClickableContainer(container.NewBorder(
+				nil,
+				nil,
+				check,
+				widget.NewLabel(""), // size
+				nameLabel,           // name
+			), func(e *fyne.PointEvent, c *RightClickableContainer) {
+				name := nameLabel.Text
+
+				button := widget.NewButton("Unignore", func() {
+					HidePopup()
+					confirmDialog := dialog.NewConfirm("Unignore", fmt.Sprintf("Are you sure to unignore the path ? %s", name), func(b bool) {
+						if b {
+							unignoreSelectedPaths([]string{name})
+						}
+					}, w)
+					confirmDialog.Show()
+				})
+				if check.Disabled() {
+					// if file gets unignoreable, the button does not get updated
+					// unignoreSelectedPaths will show an error to the user, that the file is still actively ignored, and
+					// that it is an dropbox_ignore_service error and not a system error
+					button.Disable()
+				}
+				RightClickOpenPathActionsContextMenu(name, e, c, button)
+			})
+			rightClickContainer.OnLeftClick = func(e *fyne.PointEvent, c *RightClickableContainer) {
+				if !check.Disabled() {
+					check.SetChecked(!check.Checked)
+				}
+			}
+			return rightClickContainer
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			values := ignoredFileNamesValuesLastLenCall
@@ -126,17 +210,55 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			if i < len(values) {
 				name = values[i]
 			}
+			info, ok := ignoresFileExtendedInfos.Load(name)
 
-			check := o.(*widget.Check)
-			check.SetText(name)
-			check.Checked = checkedFileNames.Has(name)
+			rightClickContainer := o.(*RightClickableContainer)
+			container := rightClickContainer.Content.(*fyne.Container)
+			nameLabel := container.Objects[0].(*widget.Label)
+			check := container.Objects[1].(*widget.Check)
+			sizeLabel := container.Objects[2].(*widget.Label)
 
+			changed := false
+			if check.Checked != checkedFileNames.Has(name) {
+				check.SetChecked(!check.Checked)
+			}
+
+			importance := widget.MediumImportance
 			if ignoredPathsSet.Has(name) {
+				importance = widget.LowImportance
+				check.Partial = true
 				check.Disable()
 			} else {
+				check.Partial = false
 				check.Enable()
 			}
 
+			if nameLabel.Text != name {
+				changed = true
+				nameLabel.SetText(name)
+			}
+			if nameLabel.Importance != importance {
+				changed = true
+				nameLabel.Importance = importance
+			}
+
+			var sizeLabelText string
+			if !ok {
+				sizeLabelText = "?"
+			} else if info.Err != nil {
+				sizeLabelText = info.Err.Error()
+			} else {
+				sizeLabelText = info.Size.HumanReadable()
+			}
+			if sizeLabel.Text != sizeLabelText {
+				changed = true
+				sizeLabel.SetText(sizeLabelText)
+			}
+
+			if changed {
+				// if the text size changes, the container also must update
+				container.Refresh()
+			}
 		},
 	)
 
@@ -149,11 +271,13 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	ignoredFilesProgressBar := widget.NewProgressBar()
 	ignoredFilesProgressBar.Max = float64(len(dropboxIgnorers))
 	ignoredFilesProgressCurrentDropboxPath := widget.NewLabel("")
+	ignoredFilesProgressCurrentDropboxPath.Wrapping = fyne.TextWrapWord
 	ignoredFilesProgressCurrentPath := widget.NewLabel("")
+	ignoredFilesProgressCurrentPath.Wrapping = fyne.TextWrapWord
 	ignoredFilesProgress := container.NewVBox(
 		ignoredFilesProgressBar,
-		container.New(layout.NewHBoxLayout(), widget.NewLabel("current dropbox root:"), ignoredFilesProgressCurrentDropboxPath),
-		container.New(layout.NewHBoxLayout(), widget.NewLabel("current path:"), ignoredFilesProgressCurrentPath),
+		container.NewBorder(nil, nil, widget.NewLabel("current dropbox root:"), nil, ignoredFilesProgressCurrentDropboxPath),
+		container.NewBorder(nil, nil, widget.NewLabel("current path:"), nil, ignoredFilesProgressCurrentPath),
 	)
 	ignoredPathsSet.AddChangeEventListener(func() {
 		ignoredFilesListContentRefreshDebounced()
@@ -279,10 +403,15 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	})
 	toggleShowOnlyRemovableOrAllFilesButton.Checked = showOnlyRemovableOrAllFiles
 
-	unignoreSelectedPaths := func() {
+	unignoreSelectedPaths = func(paths []string) {
 		var errText []string
-		for _, name := range checkedFileNames.Values() {
-			err := RemoveDropboxIgnoreFlag(name)
+		for _, name := range paths {
+			var err error
+			if ignoredPathsSet.Has(name) {
+				err = fmt.Errorf("file is actively ignored and may not get unignored (dropbox_ignore_service error)")
+			} else {
+				err = RemoveDropboxIgnoreFlag(name)
+			}
 			if err != nil {
 				log.Printf("error removing ignore flag from path %s: %s", name, err)
 				errText = append(errText, fmt.Sprintf("error removing ignore flag from path %s: %s", name, err))
@@ -300,20 +429,22 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	ignoredFilesRemoveIgnoreFlagButton := widget.NewButton("", func() {
 		confirmDialog := dialog.NewConfirm("Unignore", fmt.Sprintf("Are you sure to unignore %d paths?", checkedFileNames.Len()), func(b bool) {
 			if b {
-				unignoreSelectedPaths()
+				unignoreSelectedPaths(checkedFileNames.Values())
 			}
 		}, w)
 		confirmDialog.Show()
 	})
-	updateIgnoredFilesRemoveIgnoreFlagButton := func() {
-		count := checkedFileNames.Len()
-		ignoredFilesRemoveIgnoreFlagButton.SetText(fmt.Sprintf("(%d) Unignore", count))
-		if count == 0 {
-			ignoredFilesRemoveIgnoreFlagButton.Disable()
-		} else {
-			ignoredFilesRemoveIgnoreFlagButton.Enable()
-		}
-	}
+	updateIgnoredFilesRemoveIgnoreFlagButton := Debounce(func() {
+		FyneDoSync(a, func() {
+			count := checkedFileNames.Len()
+			ignoredFilesRemoveIgnoreFlagButton.SetText(fmt.Sprintf("(%d) Unignore", count))
+			if count == 0 {
+				ignoredFilesRemoveIgnoreFlagButton.Disable()
+			} else {
+				ignoredFilesRemoveIgnoreFlagButton.Enable()
+			}
+		})
+	}, time.Second/60)
 	checkedFileNames.AddChangeEventListener(updateIgnoredFilesRemoveIgnoreFlagButton)
 	updateIgnoredFilesRemoveIgnoreFlagButton()
 
@@ -338,19 +469,18 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			return ignoreFilesSet.Len()
 		},
 		func() fyne.CanvasObject {
-			var button *widget.Button
-			button = widget.NewButton("", func() {
-				path := button.Text
-
-				open.Explorer(path)
+			button := widget.NewLabel("")
+			return NewRightClickableContainer(button, func(e *fyne.PointEvent, c *RightClickableContainer) {
+				RightClickOpenPathActionsContextMenu(button.Text, e, c)
 			})
-			return button
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			// multithreading
 			name := ignoreFilesSet.GetOrEmptyString(i)
 
-			button := o.(*widget.Button)
+			rightClickContainer := o.(*RightClickableContainer)
+			button := rightClickContainer.Content.(*widget.Label)
+
 			button.SetText(name)
 		},
 	)
@@ -370,7 +500,23 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			return len(logStringSlice.data)
 		},
 		func() fyne.CanvasObject {
-			return widget.NewLabel("")
+			label := widget.NewLabel("")
+
+			return NewRightClickableContainer(label, func(e *fyne.PointEvent, c *RightClickableContainer) {
+				text := label.Text
+
+				textLabel := widget.NewLabel(text)
+				textSize := textLabel.MinSize()
+				textLabel.Wrapping = fyne.TextWrapWord
+				textContent := NewMinSizeWrapper(textLabel, fyne.Size{Width: min(w.Canvas().Size().Width, textSize.Width)})
+
+				button := widget.NewButton("Copy Text", func() {
+					a.Clipboard().SetContent(text)
+					HidePopup()
+				})
+
+				RightClickOpenContextMenu(e, c, textContent, button)
+			})
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			values := logStringSlice.data
@@ -380,7 +526,9 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 				data = values[i]
 			}
 
-			label := o.(*widget.Label)
+			rightClickContainer := o.(*RightClickableContainer)
+			label := rightClickContainer.Content.(*widget.Label)
+
 			label.SetText(data)
 		},
 	)
@@ -477,6 +625,107 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		go fileTree.Scan(guiCtx)
 	}))
 
+	extendedInfoQueue := util.NewSafeMap[string, struct{}]()
+	var enableExtendedInfoQ atomic.Bool
+	var enableExtendedInfoQWorker atomic.Bool
+	handleExtendedInfoQ := Debounce(func() {
+		for enableExtendedInfoQWorker.Load() {
+			foundWork := false
+			for path := range extendedInfoQueue.Keys() {
+				extendedInfoQueue.Delete(path)
+
+				foundWork = true
+
+				if !ignoredPathsSet.Has(path) && !ignoredFileNames.Has(path) {
+					// obsolete
+					continue
+				}
+
+				var extendedInfo ExtendedFileInfo
+				err := filewalkfast.WalkUnorderedMemoryAware(path, func(path string, info fs.FileInfo, err error) error {
+					if err != nil {
+						return err
+					}
+					extendedInfo.Size += datasize.ByteSize(info.Size())
+					return nil
+				})
+				if err != nil {
+					extendedInfo.Err = err
+				}
+
+				// to avoid race conditions: store first, and delete after if not needed anymore
+				// otherwise the "has"-check could return true and we store it, but in between the file got removed and the file extended info would be kept in memory.
+				ignoresFileExtendedInfos.Store(path, extendedInfo)
+
+				used := false
+				if ignoredPathsSet.Has(path) {
+					used = true
+					ignoredPathsListRefreshDebounced()
+				}
+				if ignoredFileNames.Has(path) {
+					used = true
+					ignoredFilesListContentRefreshDebounced()
+				}
+
+				if !used {
+					// got obsolete after scanning
+					ignoresFileExtendedInfos.Delete(path)
+					continue
+				}
+			}
+
+			if !foundWork {
+				return
+			}
+		}
+	}, time.Second/60)
+	ignoredPathsSet.AddAddEventListener(func(s string) {
+		if enableExtendedInfoQ.Load() {
+			extendedInfoQueue.Store(s, struct{}{})
+			handleExtendedInfoQ()
+		}
+	})
+	ignoredPathsSet.AddRemoveEventListener(func(s string) {
+		if enableExtendedInfoQ.Load() && !ignoredFileNames.Has(s) {
+			extendedInfoQueue.Delete(s)
+			ignoresFileExtendedInfos.Delete(s)
+		}
+	})
+
+	ignoredFileNames.AddAddEventListener(func(s string) {
+		if enableExtendedInfoQ.Load() {
+			extendedInfoQueue.Store(s, struct{}{})
+			handleExtendedInfoQ()
+		}
+	})
+	ignoredFileNames.AddRemoveEventListener(func(s string) {
+		if enableExtendedInfoQ.Load() {
+			extendedInfoQueue.Delete(s)
+			ignoresFileExtendedInfos.Delete(s)
+		}
+	})
+	refreshExtendedFileInfosDebounced := Debounce(func() {
+		ignoresFileExtendedInfos.Clear()
+		extendedInfoQueue.Clear()
+
+		if !enableExtendedInfoQ.Load() {
+			return
+		}
+
+		// remove duplicates first
+		values := slices.Concat(ignoredPathsSet.Values(), ignoredFileNames.Values())
+		slices.Sort(values)
+		values = slices.Compact(values)
+
+		for _, path := range values {
+			extendedInfoQueue.Store(path, struct{}{})
+		}
+		handleExtendedInfoQ()
+	}, 0)
+	refreshIgnoredPathsSet.OnTapped = func() {
+		refreshExtendedFileInfosDebounced()
+	}
+
 	tabs := container.NewAppTabs(
 		homeTab,
 		ignoredFilesTab,
@@ -487,21 +736,30 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	)
 
 	if desk, ok := a.(desktop.App); ok {
+		openTabAndShow := func(item *container.TabItem) {
+			if tabs.Selected() != item {
+				tabs.Select(item)
+			} else {
+				// ensure to call selected callback after open window again
+				tabs.OnSelected(item)
+			}
+			w.Show()
+		}
 		var m *fyne.Menu = fyne.NewMenu(appNameToUserDisplay(a),
 			fyne.NewMenuItem("Show", func() {
-				w.Show()
+				openTabAndShow(tabs.Selected())
+			}),
+			fyne.NewMenuItem("Home", func() {
+				openTabAndShow(homeTab)
 			}),
 			fyne.NewMenuItem("Ignored Files", func() {
-				tabs.Select(ignoredFilesTab)
-				w.Show()
+				openTabAndShow(ignoredFilesTab)
 			}),
 			fyne.NewMenuItem("Logs", func() {
-				tabs.Select(logsTab)
-				w.Show()
+				openTabAndShow(logsTab)
 			}),
 			fyne.NewMenuItem("Settings", func() {
-				tabs.Select(settingsTab)
-				w.Show()
+				openTabAndShow(settingsTab)
 			}),
 			fyne.NewMenuItem("Quit", func() {
 				guiCtxCancel()
@@ -513,6 +771,16 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	}
 
 	tabs.OnSelected = func(ti *container.TabItem) {
+		if ti == homeTab || ti == ignoredFilesTab {
+			enableExtendedInfoQWorker.Store(true)
+			if enableExtendedInfoQ.CompareAndSwap(false, true) {
+				refreshExtendedFileInfosDebounced()
+			}
+			handleExtendedInfoQ()
+		} else {
+			enableExtendedInfoQWorker.Store(false)
+		}
+
 		if ti == ignoredFilesTab {
 			if !ignoredFilesTabLoaded {
 				ignoredFilesTabLoaded = true
@@ -531,6 +799,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			go refreshAutoStartCheckBox()
 		}
 	}
+	tabs.OnSelected(tabs.Selected())
 
 	w.SetContent(fynetooltip.AddWindowToolTipLayer(tabs, w.Canvas()))
 
@@ -538,6 +807,14 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	w.SetCloseIntercept(func() {
 		log.Printf("Close intercept: hide window")
 		w.Hide()
+
+		if enableExtendedInfoQ.CompareAndSwap(true, false) {
+			refreshExtendedFileInfosDebounced()
+		}
+		if fileTreeTabLoaded {
+			fileTreeTabLoaded = false
+			go fileTree.Clean()
+		}
 	})
 	go func() {
 		<-guiCtx.Done()
@@ -613,3 +890,55 @@ func ShowError(errorText string) {
 
 	w.ShowAndRun()
 }
+
+type MinSizeWrapper struct {
+	widget.BaseWidget
+	Child fyne.CanvasObject
+	Min   fyne.Size
+}
+
+func NewMinSizeWrapper(child fyne.CanvasObject, min fyne.Size) *MinSizeWrapper {
+	w := &MinSizeWrapper{
+		Child: child,
+		Min:   min,
+	}
+	w.ExtendBaseWidget(w)
+	return w
+}
+
+func (w *MinSizeWrapper) CreateRenderer() fyne.WidgetRenderer {
+	return &minSizeWrapperRenderer{
+		w: w,
+	}
+}
+
+type minSizeWrapperRenderer struct {
+	w *MinSizeWrapper
+}
+
+func (r *minSizeWrapperRenderer) Layout(size fyne.Size) {
+	r.w.Child.Resize(size)
+}
+
+func (r *minSizeWrapperRenderer) MinSize() fyne.Size {
+	min := r.w.Child.MinSize()
+
+	if min.Width < r.w.Min.Width {
+		min.Width = r.w.Min.Width
+	}
+	if min.Height < r.w.Min.Height {
+		min.Height = r.w.Min.Height
+	}
+
+	return min
+}
+
+func (r *minSizeWrapperRenderer) Refresh() {
+	r.w.Child.Refresh()
+}
+
+func (r *minSizeWrapperRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.w.Child}
+}
+
+func (r *minSizeWrapperRenderer) Destroy() {}

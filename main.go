@@ -12,6 +12,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/anton15x/dropbox_ignore_service/src/util"
 )
 
 func getDropboxFoldersEnsured(cmdFolders []string) ([]string, error) {
@@ -146,8 +148,8 @@ func mainWithErr() error {
 	}
 	log.Printf("handling dropbox folders: %+v", dropboxFolders)
 
-	ignoredPathsSet := NewSortedStringSet()
-	ignoreFilesSet := NewSortedStringSet()
+	ignoredPathsSet := util.NewSortedStringSet()
+	ignoreFilesSet := util.NewSortedStringSet()
 	dropboxIgnorers := make([]*DropboxIgnorer, len(dropboxFolders))
 
 	startTime := time.Now()

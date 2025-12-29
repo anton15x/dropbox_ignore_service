@@ -27,11 +27,15 @@ import (
 type FileTree struct {
 	content fyne.CanvasObject
 
-	scan func(parent context.Context)
+	clean func()
+	scan  func(parent context.Context)
 }
 
 func (f *FileTree) Content() fyne.CanvasObject {
 	return f.content
+}
+func (f *FileTree) Clean() {
+	f.clean()
 }
 func (f *FileTree) Scan(parent context.Context) {
 	f.scan(parent)
@@ -273,7 +277,7 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 		headerButtons[i] = button
 	}
 
-	separateFileAndFolders := widget.NewCheck("seperate", func(b bool) {
+	separateFileAndFolders := widget.NewCheck("separate", func(b bool) {
 		separateFoldersAndFiles = b
 
 		scheduleRefresh()
@@ -423,6 +427,12 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 		tree,
 	)
 
+	clean := func() {
+		m.Clear()
+		searchM.Clear()
+
+		scheduleRefresh()
+	}
 	scan := util.SingleExecutionContextStopCtx(func(ctx context.Context) {
 		startTime := time.Now()
 
@@ -525,6 +535,7 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 
 	return &FileTree{
 		content: content,
+		clean:   clean,
 		scan:    scan,
 	}
 }

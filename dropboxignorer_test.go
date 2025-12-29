@@ -14,6 +14,7 @@ import (
 	"time"
 
 	main "github.com/anton15x/dropbox_ignore_service"
+	"github.com/anton15x/dropbox_ignore_service/src/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -471,8 +472,8 @@ func TestDropboxIgnorerListenEvents(t *testing.T) {
 				sleepToEnsureEvents()
 
 				var wg sync.WaitGroup
-				ignoredPathsSet := main.NewSortedStringSet()
-				ignoreFiles := main.NewSortedStringSet()
+				ignoredPathsSet := util.NewSortedStringSet()
+				ignoreFiles := util.NewSortedStringSet()
 				i, err := main.NewDropboxIgnorer(dropboxDir, testVariant.tryRun, logger, ctx, &wg, ignoredPathsSet, ignoreFiles)
 				requireNoError(t, err)
 				defer PrintDropboxIgnorerStatsIfTestFailed(t, i)
@@ -895,8 +896,8 @@ func TestDropboxIgnorerIgnoreFileEdit(t *testing.T) {
 
 			tryRun := false
 			var wg sync.WaitGroup
-			ignoredPathsSet := main.NewSortedStringSet()
-			ignoreFiles := main.NewSortedStringSet()
+			ignoredPathsSet := util.NewSortedStringSet()
+			ignoreFiles := util.NewSortedStringSet()
 			i, err := main.NewDropboxIgnorer(dropboxDir, tryRun, logger, ctx, &wg, ignoredPathsSet, ignoreFiles)
 			requireNoError(t, err)
 			defer PrintDropboxIgnorerStatsIfTestFailed(t, i)
