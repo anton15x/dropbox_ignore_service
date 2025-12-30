@@ -163,6 +163,7 @@ func HasFlagSyscall(path string) (bool, error) {
 		// ADS does not exist
 		return false, fmt.Errorf("invalid handle (h=%d): %w", handle, err)
 	}
+	//nolint:errcheck
 	defer syscall.CloseHandle(handle)
 
 	// Read exactly 1 byte

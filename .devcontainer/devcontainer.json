@@ -1,0 +1,11 @@
+{
+    "name": "dropbox_ignore_service Dev",
+    "dockerFile": "Dockerfile",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "golang.go"
+            ]
+        }
+    }
+}

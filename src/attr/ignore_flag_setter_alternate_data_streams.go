@@ -34,6 +34,7 @@ func (*implementationAlternateDataStreams) HasFlag(path string) (bool, error) {
 		}
 		return false, err
 	}
+	//nolint:errcheck
 	defer f.Close()
 
 	var b [2]byte

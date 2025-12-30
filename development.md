@@ -97,7 +97,7 @@ ENABLE_LARGE_TESTS=1 go test -v -count=1 -run ^TestDropboxIgnorerIgnoreFileEdit/
 ```
 
 ## running linter:
-https://golangci-lint.run/usage/install/
+https://golangci-lint.run/docs/welcome/install/local/
 ```bash
 golangci-lint run ./...
 ```

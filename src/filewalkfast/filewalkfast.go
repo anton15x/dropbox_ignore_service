@@ -71,6 +71,7 @@ func walkData[T any](path string, d fs.FileInfo, walkFn WalkDataFunc[T], data T,
 		var f *os.File
 		f, err = os.Open(path)
 		if err == nil {
+			//nolint:errcheck
 			defer f.Close()
 
 			// Readdir returns os.FileInfo directly, and is much faster, than stating each file separately
@@ -132,6 +133,7 @@ func walkDataUnorderedMemoryAware[T any](path string, d fs.FileInfo, walkFn Walk
 
 	f, err := os.Open(path)
 	if err == nil {
+		//nolint:errcheck
 		defer f.Close()
 
 		for {

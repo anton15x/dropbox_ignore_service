@@ -389,6 +389,7 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 	}
 	regexCheckBox.OnChanged = func(b bool) {
 		if b {
+			//nolint:errcheck
 			searchTextInput.Validate()
 		}
 		updateSearch()
