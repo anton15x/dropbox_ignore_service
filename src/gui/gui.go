@@ -756,7 +756,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*dropboxignorer.DropboxIgnor
 			}
 			w.Show()
 		}
-		var m *fyne.Menu = fyne.NewMenu(appNameToUserDisplay(a),
+		m := fyne.NewMenu(appNameToUserDisplay(a),
 			fyne.NewMenuItem("Show", func() {
 				openTabAndShow(tabs.Selected())
 			}),

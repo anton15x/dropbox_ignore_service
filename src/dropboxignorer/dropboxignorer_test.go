@@ -116,12 +116,7 @@ func (f *fileTester) CreateDropboxignore(filename string, patterns ...string) {
 func (f *fileTester) Remove(path string) {
 	isIgnored := f.m[path]
 	f.t.Logf("removing directory (isIgnored: %v) %s", isIgnored, path)
-	err := os.Remove(path)
-	if err != nil {
-		f.t.Logf("remove failed, try again after a short sleep: %s", err)
-		time.Sleep(5 * time.Second)
-		err = os.Remove(path)
-	}
+	err := testutil.RetriedExecute(f.t, "remove", func() error { return os.Remove(path) })
 	require.NoError(f.t, err)
 	delete(f.m, path)
 
@@ -226,12 +221,7 @@ func (f *fileTester) EditFileStatuses(pathIsIgnoredMap map[string]bool) {
 
 func (f *fileTester) Rename(oldPath, path string, isIgnored bool, subFoldersIsIgnored map[string]bool) {
 	f.t.Logf("renaming directory %s => %s", oldPath, path)
-	err := os.Rename(oldPath, path)
-	if err != nil {
-		f.t.Logf("rename failed, try again after a short sleep: %s", err)
-		time.Sleep(5 * time.Second)
-		err = os.Rename(oldPath, path)
-	}
+	err := testutil.RetriedExecute(f.t, "rename", func() error { return os.Rename(oldPath, path) })
 	require.NoError(f.t, err)
 
 	sleepToEnsureEvents()

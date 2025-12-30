@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/anton15x/dropbox_ignore_service/src/attr"
 	"github.com/anton15x/dropbox_ignore_service/src/dropboxignorer"
@@ -93,4 +94,25 @@ func PrintDropboxIgnorerStatsIfTestFailed(t *testing.T, i *dropboxignorer.Dropbo
 		t.Logf("test failed, printing dropbox ignorer stats")
 		PrintDropboxIgnorerStats(t, i)
 	}
+}
+
+func RetriedExecute(t *testing.T, name string, f func() error) error {
+	err := f()
+	if err == nil {
+		return nil
+	}
+
+	// first retry after a short time, than increase
+	// to minify test time
+	for _, d := range []time.Duration{time.Second / 5, time.Second, 5 * time.Second} {
+		t.Logf("%s failed, retry again after %s (err=%s)", name, d.String(), err)
+		time.Sleep(d)
+
+		err = f()
+		if err == nil {
+			return nil
+		}
+	}
+
+	return err
 }
