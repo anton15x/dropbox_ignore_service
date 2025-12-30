@@ -1,4 +1,4 @@
-package main
+package gui
 
 import (
 	"cmp"
@@ -301,7 +301,7 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 		return nil
 	}
 
-	updateSearch := Debounce(func() {
+	updateSearch := util.Debounce(func() {
 		val := searchTextInput.Text
 		flatten := flattenCheckBox.Checked
 		useRegex := regexCheckBox.Checked
@@ -522,7 +522,7 @@ func newFileTree(myApp fyne.App, roots []string, shouldSkip func(string) bool) *
 		log.Printf("file tree scan took %s", duration.String())
 	})
 
-	scheduleRefresh = Debounce(func() {
+	scheduleRefresh = util.Debounce(func() {
 		myApp.Driver().DoFromGoroutine(func() {
 			tree.Refresh()
 

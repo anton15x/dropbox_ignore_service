@@ -1,4 +1,4 @@
-package main_test
+package util_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	main "github.com/anton15x/dropbox_ignore_service"
+	"github.com/anton15x/dropbox_ignore_service/src/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +27,7 @@ func TestDebounce(t *testing.T) {
 				firstCall := true
 				var wg sync.WaitGroup
 				wg.Add(1)
-				debounced := main.DebounceWithSleepFunc(func(val int) {
+				debounced := util.DebounceWithSleepFunc(func(val int) {
 					called <- val
 				}, func() {
 					if firstCall {
@@ -55,7 +55,7 @@ func TestDebounce(t *testing.T) {
 				defer ctxStop()
 
 				var wg sync.WaitGroup
-				debounced := main.DebounceWithSleepFunc(func(val int) {
+				debounced := util.DebounceWithSleepFunc(func(val int) {
 					called++
 					wg.Done()
 				}, func() {
@@ -87,7 +87,7 @@ func TestDebounce(t *testing.T) {
 				defer ctxStop()
 				var wg sync.WaitGroup
 
-				debounced := main.DebounceWithSleepFunc(func(val int) {
+				debounced := util.DebounceWithSleepFunc(func(val int) {
 					called++
 					wg.Done()
 				}, func() {
@@ -125,7 +125,7 @@ func TestDebounce(t *testing.T) {
 				defer ctxStop()
 				var wg sync.WaitGroup
 
-				debounced := main.DebounceWithSleepFunc(func(val int) {
+				debounced := util.DebounceWithSleepFunc(func(val int) {
 					called++
 					wg.Done()
 				}, func() {
@@ -165,7 +165,7 @@ func TestDebounce(t *testing.T) {
 				defer ctxStop()
 				var wg sync.WaitGroup
 
-				debounced := main.DebounceWithSleepFunc(func(val int) {
+				debounced := util.DebounceWithSleepFunc(func(val int) {
 					called++
 					wg.Done()
 				}, func() {

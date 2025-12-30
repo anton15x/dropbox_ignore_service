@@ -1,4 +1,4 @@
-package main
+package dropboxignorer
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/anton15x/dropbox_ignore_service/src/attr"
 	"github.com/anton15x/dropbox_ignore_service/src/fsnotify"
 	"github.com/anton15x/dropbox_ignore_service/src/util"
 )
@@ -309,7 +310,7 @@ func (i *DropboxIgnorer) SetIgnoreFlag(path string) error {
 		return nil
 	}
 
-	hasFlag, err := HasDropboxIgnoreFlag(path)
+	hasFlag, err := attr.HasDropboxIgnoreFlag(path)
 	if err != nil {
 		info, err := os.Stat(path)
 		if err != nil {
@@ -333,7 +334,7 @@ func (i *DropboxIgnorer) SetIgnoreFlag(path string) error {
 		// already has flag => do not set again
 		return nil
 	}
-	return SetDropboxIgnoreFlag(path)
+	return attr.SetDropboxIgnoreFlag(path)
 }
 
 func (i *DropboxIgnorer) IsInsideIgnoreDir(path string) bool {

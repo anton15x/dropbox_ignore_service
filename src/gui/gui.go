@@ -1,4 +1,4 @@
-package main
+package gui
 
 import (
 	"context"
@@ -22,12 +22,28 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"fyne.io/systray"
+	"github.com/anton15x/dropbox_ignore_service/src/attr"
+	"github.com/anton15x/dropbox_ignore_service/src/dropboxignorer"
 	"github.com/anton15x/dropbox_ignore_service/src/filewalkfast"
 	"github.com/anton15x/dropbox_ignore_service/src/util"
 	"github.com/c2h5oh/datasize"
 	fynetooltip "github.com/dweymouth/fyne-tooltip"
 	ttwidget "github.com/dweymouth/fyne-tooltip/widget"
 )
+
+func FyneDoSync(a fyne.App, f func()) {
+	// do internal of fyne.Do
+	a.Driver().DoFromGoroutine(func() {
+		f()
+	}, true)
+}
+
+func FyneDo(a fyne.App, f func()) {
+	// do internal of fyne.Do
+	a.Driver().DoFromGoroutine(func() {
+		f()
+	}, false)
+}
 
 func appNameToUserDisplay(a fyne.App) string {
 	// return strings.Title(strings.ReplaceAll(a.Metadata().Name, "_", ""))
@@ -49,7 +65,7 @@ func appNameToUserDisplay(a fyne.App) string {
 	return ret
 }
 
-func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI bool, ignoredPathsSet *util.SortedStringSet, ignoreFilesSet *util.SortedStringSet, logStringSlice *logStringSliceStruct) error {
+func ShowGUI(ctx context.Context, dropboxIgnorers []*dropboxignorer.DropboxIgnorer, hideGUI bool, ignoredPathsSet *util.SortedStringSet, ignoreFilesSet *util.SortedStringSet, logStringSlice *util.LogStringSliceStruct) error {
 	guiCtx, guiCtxCancel := context.WithCancel(ctx)
 	defer guiCtxCancel()
 
@@ -123,7 +139,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	updateHomeTopLabel := func() {
 		homeTopLabel.SetText(fmt.Sprintf("Ignoring %d elements", ignoredPathsSet.Len()))
 	}
-	ignoredPathsListRefreshDebounced := Debounce(func() {
+	ignoredPathsListRefreshDebounced := util.Debounce(func() {
 		FyneDoSync(a, func() {
 			updateHomeTopLabel()
 			ignoredPathsSetList.Refresh()
@@ -262,7 +278,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		},
 	)
 
-	ignoredFilesListContentRefreshDebounced := Debounce(func() {
+	ignoredFilesListContentRefreshDebounced := util.Debounce(func() {
 		FyneDoSync(a, func() {
 			ignoredFilesListContent.Refresh()
 		})
@@ -295,7 +311,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	ignoredFileNames.AddRemoveEventListener(func(s string) {
 		checkedFileNames.Remove(s)
 	})
-	ignoredFilesProgressCurrentPathRefreshDebounced := DebounceVal(func(val string) {
+	ignoredFilesProgressCurrentPathRefreshDebounced := util.DebounceVal(func(val string) {
 		FyneDoSync(a, func() {
 			ignoredFilesProgressCurrentPath.Text = val
 			ignoredFilesProgressCurrentPath.Refresh()
@@ -316,7 +332,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 
 		for i, dropboxIgnorer := range dropboxIgnorers {
 			FyneDoSync(a, func() {
-				ignoredFilesProgressCurrentDropboxPath.SetText(dropboxIgnorer.dropboxPath)
+				ignoredFilesProgressCurrentDropboxPath.SetText(dropboxIgnorer.DropboxPath())
 			})
 
 			type Work struct {
@@ -330,18 +346,18 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 					defer wg.Done()
 					for w := range work {
 						path := w.Path
-						isIgnored, err := HasDropboxIgnoreFlag(path)
+						isIgnored, err := attr.HasDropboxIgnoreFlag(path)
 						if err != nil {
 							log.Printf("error checking %s: %s", path, err)
 						}
-						if isIgnored && !ignoredFileNames.Has(path) && !strings.HasPrefix(path, filepath.Join(dropboxIgnorer.dropboxPath, ".dropbox.cache")) {
+						if isIgnored && !ignoredFileNames.Has(path) && !strings.HasPrefix(path, filepath.Join(dropboxIgnorer.DropboxPath(), ".dropbox.cache")) {
 							ignoredFileNames.Add(path)
 						}
 					}
 				}()
 			}
 
-			err := filewalkfast.WalkUnorderedMemoryAware(dropboxIgnorer.dropboxPath, func(path string, info fs.FileInfo, err error) error {
+			err := filewalkfast.WalkUnorderedMemoryAware(dropboxIgnorer.DropboxPath(), func(path string, info fs.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
@@ -410,7 +426,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			if ignoredPathsSet.Has(name) {
 				err = fmt.Errorf("file is actively ignored and may not get unignored (dropbox_ignore_service error)")
 			} else {
-				err = RemoveDropboxIgnoreFlag(name)
+				err = attr.RemoveDropboxIgnoreFlag(name)
 			}
 			if err != nil {
 				log.Printf("error removing ignore flag from path %s: %s", name, err)
@@ -434,7 +450,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		}, w)
 		confirmDialog.Show()
 	})
-	updateIgnoredFilesRemoveIgnoreFlagButton := Debounce(func() {
+	updateIgnoredFilesRemoveIgnoreFlagButton := util.Debounce(func() {
 		FyneDoSync(a, func() {
 			count := checkedFileNames.Len()
 			ignoredFilesRemoveIgnoreFlagButton.SetText(fmt.Sprintf("(%d) Unignore", count))
@@ -462,7 +478,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	ignoredFilesTab := container.NewTabItemWithIcon("Ignored Files", theme.VisibilityOffIcon(), ignoredFilesContent)
 
 	for _, d := range dropboxIgnorers {
-		ignoreFilesSet.Add(filepath.Join(d.dropboxPath, DropboxIgnoreFilename))
+		ignoreFilesSet.Add(filepath.Join(d.DropboxPath(), dropboxignorer.DropboxIgnoreFilename))
 	}
 	ignoreFilesSetList := widget.NewList(
 		func() int {
@@ -484,7 +500,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			button.SetText(name)
 		},
 	)
-	ignoreFilesSet.AddChangeEventListener(Debounce(func() {
+	ignoreFilesSet.AddChangeEventListener(util.Debounce(func() {
 		FyneDoSync(a, func() {
 			ignoreFilesSetList.Refresh()
 		})
@@ -497,7 +513,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 
 	logStringSliceList := widget.NewList(
 		func() int {
-			return len(logStringSlice.data)
+			return logStringSlice.Len()
 		},
 		func() fyne.CanvasObject {
 			label := widget.NewLabel("")
@@ -519,12 +535,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			})
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
-			values := logStringSlice.data
-			i = len(values) - i - 1
-			data := ""
-			if i < len(values) {
-				data = values[i]
-			}
+			data := logStringSlice.GetOrEmptyString(logStringSlice.Len() - i - 1)
 
 			rightClickContainer := o.(*RightClickableContainer)
 			label := rightClickContainer.Content.(*widget.Label)
@@ -532,7 +543,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			label.SetText(data)
 		},
 	)
-	logStringSliceListRefreshDebounced := Debounce(func() {
+	logStringSliceListRefreshDebounced := util.Debounce(func() {
 		FyneDoSync(a, func() {
 			logStringSliceList.Refresh()
 		})
@@ -566,12 +577,12 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	autoStartCheckBox = widget.NewCheck("Autostart", func(value bool) {
 		var err error
 		if value {
-			err = EnableAutoStart()
+			err = util.EnableAutoStart()
 			if err != nil {
 				log.Printf("error enable autostart: %s", err)
 			}
 		} else {
-			err = DisableAutoStart()
+			err = util.DisableAutoStart()
 			if err != nil {
 				log.Printf("error disable autostart: %s", err)
 			}
@@ -583,7 +594,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 		}
 	})
 	refreshAutoStartCheckBox := func() {
-		autostartEnabled, err := IsAutoStartEnabled()
+		autostartEnabled, err := util.IsAutoStartEnabled()
 		if err != nil {
 			log.Printf("error checking if autostart is enabled: %s", err)
 			return
@@ -614,11 +625,11 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 
 	roots := make([]string, 0, len(dropboxIgnorers))
 	for _, dropboxIgnorer := range dropboxIgnorers {
-		roots = append(roots, dropboxIgnorer.dropboxPath)
+		roots = append(roots, dropboxIgnorer.DropboxPath())
 	}
 	fileTreeTabLoaded := false
 	fileTree := newFileTree(a, roots, func(path string) bool {
-		val, err := HasDropboxIgnoreFlag(path)
+		val, err := attr.HasDropboxIgnoreFlag(path)
 		return val && err == nil
 	})
 	fileTreeTab := container.NewTabItemWithIcon("FileTree", theme.ListIcon(), addFloatingRefresh(fileTree.Content(), func() {
@@ -628,7 +639,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 	extendedInfoQueue := util.NewSafeMap[string, struct{}]()
 	var enableExtendedInfoQ atomic.Bool
 	var enableExtendedInfoQWorker atomic.Bool
-	handleExtendedInfoQ := Debounce(func() {
+	handleExtendedInfoQ := util.Debounce(func() {
 		for enableExtendedInfoQWorker.Load() {
 			foundWork := false
 			for path := range extendedInfoQueue.Keys() {
@@ -704,7 +715,7 @@ func ShowGUI(ctx context.Context, dropboxIgnorers []*DropboxIgnorer, hideGUI boo
 			ignoresFileExtendedInfos.Delete(s)
 		}
 	})
-	refreshExtendedFileInfosDebounced := Debounce(func() {
+	refreshExtendedFileInfosDebounced := util.Debounce(func() {
 		ignoresFileExtendedInfos.Clear()
 		extendedInfoQueue.Clear()
 

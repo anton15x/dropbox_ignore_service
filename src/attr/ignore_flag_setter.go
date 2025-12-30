@@ -1,4 +1,4 @@
-package main
+package attr
 
 type Implementation interface {
 	SetFlag(path string) error

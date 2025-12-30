@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anton15x/dropbox_ignore_service/src/dropboxignorer"
+	"github.com/anton15x/dropbox_ignore_service/src/gui"
 	"github.com/anton15x/dropbox_ignore_service/src/util"
 )
 
@@ -21,7 +23,7 @@ func getDropboxFoldersEnsured(cmdFolders []string) ([]string, error) {
 		return cmdFolders, nil
 	}
 
-	folders, err := ParseDropboxInfoPaths()
+	folders, err := dropboxignorer.ParseDropboxInfoPaths()
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dropbox folders: %s", err)
 	}
@@ -44,7 +46,7 @@ func (i *stringArrayFlags) Set(value string) error {
 func main() {
 	err := mainWithErrPanicWrapped()
 	if err != nil {
-		ShowError(err.Error())
+		gui.ShowError(err.Error())
 		log.Fatal(err.Error())
 		os.Exit(1)
 	}
@@ -105,7 +107,7 @@ func mainWithErr() error {
 		log.SetOutput(io.MultiWriter(logFile, bakWriter))
 	}
 
-	logStringSlice := NewLogStringSlice()
+	logStringSlice := util.NewLogStringSlice()
 	{
 		bakWriter := log.Writer()
 		defer log.SetOutput(bakWriter)
@@ -131,7 +133,7 @@ func mainWithErr() error {
 	if logFilename != "" {
 		args = append(args, "-"+logFilenameArg, logFilename)
 	}
-	SetAutoStartArgs(args)
+	util.SetAutoStartArgs(args)
 
 	var wg sync.WaitGroup
 	// TODO: fyne package seems hide signals from us
@@ -150,11 +152,11 @@ func mainWithErr() error {
 
 	ignoredPathsSet := util.NewSortedStringSet()
 	ignoreFilesSet := util.NewSortedStringSet()
-	dropboxIgnorers := make([]*DropboxIgnorer, len(dropboxFolders))
+	dropboxIgnorers := make([]*dropboxignorer.DropboxIgnorer, len(dropboxFolders))
 
 	startTime := time.Now()
 	for i, dropboxFolder := range dropboxFolders {
-		ignorer, err := NewDropboxIgnorer(dropboxFolder, tryRun, log.Default(), ctx, &wg, ignoredPathsSet, ignoreFilesSet)
+		ignorer, err := dropboxignorer.NewDropboxIgnorer(dropboxFolder, tryRun, log.Default(), ctx, &wg, ignoredPathsSet, ignoreFilesSet)
 		if err != nil {
 			return fmt.Errorf("error creating dropbox ignorer for %s: %w", dropboxFolder, err)
 		}
@@ -166,7 +168,7 @@ func mainWithErr() error {
 	endTime := time.Since(startTime)
 	log.Printf("init dropbox ignorer took %s", endTime.String())
 
-	err = ShowGUI(ctx, dropboxIgnorers, hideGUI, ignoredPathsSet, ignoreFilesSet, logStringSlice)
+	err = gui.ShowGUI(ctx, dropboxIgnorers, hideGUI, ignoredPathsSet, ignoreFilesSet, logStringSlice)
 	if err != nil {
 		return fmt.Errorf("error showing gui: %w", err)
 	}
