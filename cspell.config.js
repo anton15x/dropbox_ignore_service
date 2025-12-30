@@ -7,6 +7,7 @@ module.exports = {
         "coverprofile",
         "datasize",
         "dropboxignore",
+        "dropboxignorer",
         "doublestar",
         "dweymouth",
         "filewalkfast",
@@ -31,6 +32,7 @@ module.exports = {
         "stretchr",
         "systray",
         "Tappable",
+        "testutil",
         "ttwidget",
         "unignore", // not a correct word...
         "unignoreable", // not a correct word...

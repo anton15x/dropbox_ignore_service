@@ -1,25 +1,9 @@
-package main
+package util
 
 import (
 	"sync"
 	"time"
-
-	"fyne.io/fyne/v2"
 )
-
-func FyneDoSync(a fyne.App, f func()) {
-	// do internal of fyne.Do
-	a.Driver().DoFromGoroutine(func() {
-		f()
-	}, true)
-}
-
-func FyneDo(a fyne.App, f func()) {
-	// do internal of fyne.Do
-	a.Driver().DoFromGoroutine(func() {
-		f()
-	}, false)
-}
 
 func Debounce(f func(), t time.Duration) func() {
 	retF := DebounceVal(func(_ struct{}) {

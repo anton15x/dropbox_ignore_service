@@ -1,4 +1,4 @@
-package main_test
+package dropboxignorer_test
 
 import (
 	"errors"
@@ -13,30 +13,24 @@ import (
 	"sync"
 	"testing"
 
-	main "github.com/anton15x/dropbox_ignore_service"
+	"github.com/anton15x/dropbox_ignore_service/src/dropboxignorer"
 	"github.com/stretchr/testify/require"
 )
 
-func requireNoError(t *testing.T, err error) {
-	if err != nil {
-		require.Nil(t, err, "errored: %s", err.Error())
-	}
-}
-
 func requireWriteToFile(t *testing.T, f io.Writer, data []byte) {
 	n, err := f.Write(data)
-	requireNoError(t, err)
+	require.NoError(t, err)
 	require.Equal(t, len(data), n)
 }
 
 func requireMkdir(t *testing.T, path string) {
-	requireNoError(t, os.Mkdir(path, os.ModePerm))
+	require.NoError(t, os.Mkdir(path, os.ModePerm))
 }
 
 func requireCloseFile(t *testing.T, f *os.File) {
 	err := f.Close()
 	if err != nil && !errors.Is(err, os.ErrClosed) {
-		requireNoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -598,7 +592,7 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 
 				testRootDir := filepath.Join(rootDir, strconv.Itoa(testI)+"_"+strconv.Itoa(testVariant))
 				err := os.Mkdir(testRootDir, os.ModePerm)
-				requireNoError(t, err)
+				require.NoError(t, err)
 
 				test := test
 				folders := make([]*iTestFolder, len(test.folders))
@@ -612,8 +606,8 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 
 				test.prepare(t, testRootDir)
 
-				parsed, err := main.ParseIgnoreFilesFromRoot(testRootDir, IgnoreFileNameForIsIgnored)
-				requireNoError(t, err)
+				parsed, err := dropboxignorer.ParseIgnoreFilesFromRoot(testRootDir, IgnoreFileNameForIsIgnored)
+				require.NoError(t, err)
 
 				defer func() {
 					t.Logf("defer of test %s", test.name)
@@ -639,29 +633,29 @@ func TestParseIgnoreFileFromBytes(t *testing.T) {
 
 					err = os.Mkdir(folderPath, os.ModePerm)
 					if err == nil || !os.IsExist(err) {
-						requireNoError(t, err)
+						require.NoError(t, err)
 					}
 					if rmAllFolders {
 						// os.RemoveAll is unable to remove folders with backslash
 						// => we remove all folders after the first created space folders ourself
 						defer func() {
 							err = os.Remove(folderPath)
-							requireNoError(t, err)
+							require.NoError(t, err)
 						}()
 					}
 				}
 
 				initGitOnce := sync.OnceValue(func() *GitRepo {
 					g, err := NewGitRepo(testRootDir)
-					requireNoError(t, err)
+					require.NoError(t, err)
 					return g
 				})
 				for _, folder := range test.folders {
-					isIgnored := main.IsIgnored(parsed, folder.path)
+					isIgnored := dropboxignorer.IsIgnored(parsed, folder.path)
 					if compareGit {
 						g := initGitOnce()
 						expectedIsIgnored, err := g.IsIgnored(folder.path)
-						requireNoError(t, err)
+						require.NoError(t, err)
 						require.Equal(t, expectedIsIgnored, isIgnored, "git mismatch: %q", folder.path)
 					} else {
 						require.Equal(t, folder.ignored, isIgnored, "expected mismatch: %q", folder.path)

@@ -1,4 +1,4 @@
-package main_test
+package testutil
 
 import (
 	"io/fs"
@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	main "github.com/anton15x/dropbox_ignore_service"
+	"github.com/anton15x/dropbox_ignore_service/src/attr"
+	"github.com/anton15x/dropbox_ignore_service/src/dropboxignorer"
+	"github.com/stretchr/testify/require"
 )
 
 //lint:ignore U1000 Ignore unused function
@@ -15,10 +17,10 @@ func printFileTree(t *testing.T, root string) {
 	t.Helper()
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		requireNoError(t, err)
+		require.NoError(t, err)
 
-		hasFlag, err := main.HasDropboxIgnoreFlag(path)
-		requireNoError(t, err)
+		hasFlag, err := attr.HasDropboxIgnoreFlag(path)
+		require.NoError(t, err)
 		hasFlagSign := "-"
 		if hasFlag {
 			hasFlagSign = "i"
@@ -32,10 +34,12 @@ func printFileTree(t *testing.T, root string) {
 
 		return nil
 	})
-	requireNoError(t, err)
+	require.NoError(t, err)
 }
 
 func CheckTestParallel(t *testing.T) {
+	t.Helper()
+
 	if os.Getenv("DISABLE_PARALLEL_TEST") != "" {
 		return
 	}
@@ -44,6 +48,8 @@ func CheckTestParallel(t *testing.T) {
 }
 
 func CheckTestLarge(t *testing.T) {
+	t.Helper()
+
 	largeTestEnvVariable := "ENABLE_LARGE_TESTS"
 	if os.Getenv(largeTestEnvVariable) != "" {
 		return
@@ -54,13 +60,17 @@ func CheckTestLarge(t *testing.T) {
 }
 
 func PrintFileTreeIfTestFailed(t *testing.T, path string) {
+	t.Helper()
+
 	if t.Failed() {
 		t.Logf("test failed, printing file tree of %s:", path)
 		printFileTree(t, path)
 	}
 }
 
-func PrintDropboxIgnorerStats(t *testing.T, i *main.DropboxIgnorer) {
+func PrintDropboxIgnorerStats(t *testing.T, i *dropboxignorer.DropboxIgnorer) {
+	t.Helper()
+
 	t.Logf("DropboxPath: %s", i.DropboxPath())
 
 	ignoreFiles := i.IgnoreFiles().Values()
@@ -76,7 +86,9 @@ func PrintDropboxIgnorerStats(t *testing.T, i *main.DropboxIgnorer) {
 	}
 }
 
-func PrintDropboxIgnorerStatsIfTestFailed(t *testing.T, i *main.DropboxIgnorer) {
+func PrintDropboxIgnorerStatsIfTestFailed(t *testing.T, i *dropboxignorer.DropboxIgnorer) {
+	t.Helper()
+
 	if t.Failed() {
 		t.Logf("test failed, printing dropbox ignorer stats")
 		PrintDropboxIgnorerStats(t, i)

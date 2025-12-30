@@ -1,6 +1,6 @@
 //go:build !windows
 
-package main
+package attr
 
 import (
 	"bytes"
@@ -47,31 +47,14 @@ func (*implementationXattr) HasFlag(path string) (bool, error) {
 	if !xattr.XATTR_SUPPORTED {
 		return false, fmt.Errorf("xattr not supported")
 	}
-	attrs, err := xattr.List(path)
-	if err != nil {
-		err = handleXattrErr(err)
-		return false, err
-	}
-	found := false
-	for _, attr := range attrs {
-		if attr == "user.com.dropbox.ignored" {
-			found = true
-		}
-	}
-	if !found {
-		return false, nil
-	}
 
 	b, err := xattr.Get(path, "user.com.dropbox.ignored")
 	if err != nil {
-		err = handleXattrErr(err)
+		if errors.Is(err, xattr.ENOATTR) {
+			return false, nil
+		}
 
-		// TODO: ENODATA is called, if attribute dos not exist, but that is not exported
-		// xattr.list could get removed otherwise
-		// if errors.Is(err, xattr.ENODATA) {
-		// 	return false, nil
-		// }
-		return false, err
+		return false, handleXattrErr(err)
 	}
 
 	return bytes.Equal([]byte("1"), b), nil
