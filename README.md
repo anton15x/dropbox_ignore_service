@@ -7,7 +7,7 @@
 [![Go Reference](https://pkg.go.dev/badge/pkg.go.dev/github.com/anton15x/dropbox_ignore_service.svg)](https://pkg.go.dev/github.com/anton15x/dropbox_ignore_service)
 [![Test Status](https://github.com/anton15x/dropbox_ignore_service/actions/workflows/main.yml/badge.svg)](https://github.com/anton15x/dropbox_ignore_service/actions/workflows/main.yml)
 
-Dropbox Ignore Service is tool to exclude files or folders from syncing to dropbox. The files get specified via the `.dropboxignore` file located in the root of a dropbox folder. 
+Dropbox Ignore Service is tool to exclude files or folders from syncing to dropbox. The files get specified via the `.dropboxignore` file located in the root of a dropbox folder or any subfolder. 
 
 It watches for file/folder changes and notifies the user when a file/folder gets ignored via system notification.
 
@@ -15,10 +15,11 @@ It also offers a GUI:
 - list all currently ignored files/folders
 - list ignored files that are not in the .dropboxignore file specified => button to unignore them
 - List .dropboxignore files
+- File tree with space analysis (ignored files are excluded)
 - Logs
 - Settings: Enable autostart with the operation system
 
-Cross-platform support (Windows, Linux, and macOS)
+Cross-platform support (Windows, Linux, and ~~macOS~~)
 
 ## Motivation
 The primary motivation behind developing this tool was to automatically exclude the `node_modules` folder after it gets created. While there are similar projects, most of them lack a GUI.
@@ -58,7 +59,7 @@ https://github.com/anton15x/dropbox_ignore_service/releases
 
 ### Building form source
 Requirements:
-- [go](https://go.dev/dl/) >= 1.21.0
+- [go](https://go.dev/dl/) >= 1.24.0
 - gcc
 - Fyne dependencies:
   - windows: No additional dependencies required.
