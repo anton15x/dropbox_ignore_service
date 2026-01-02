@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anton15x/dropbox_ignore_service/src/attr"
-	"github.com/anton15x/dropbox_ignore_service/src/dropboxignorer"
-	"github.com/anton15x/dropbox_ignore_service/src/testutil"
-	"github.com/anton15x/dropbox_ignore_service/src/util"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/attr"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/dropboxignorer"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/testutil"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/anton15x/dropbox_ignore_service/src/attr"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/attr"
 	"github.com/stretchr/testify/require"
 )
 

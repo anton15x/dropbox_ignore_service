@@ -18,9 +18,9 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/anton15x/dropbox_ignore_service/src/filewalkfast"
-	"github.com/anton15x/dropbox_ignore_service/src/open"
-	"github.com/anton15x/dropbox_ignore_service/src/util"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/filewalkfast"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/open"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/util"
 	"github.com/c2h5oh/datasize"
 )
 

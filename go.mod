@@ -1,4 +1,4 @@
-module github.com/anton15x/dropbox_ignore_service
+module github.com/anton15x/dropbox_ignore_service/v2
 
 go 1.24
 

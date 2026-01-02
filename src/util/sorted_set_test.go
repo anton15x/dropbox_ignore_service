@@ -3,7 +3,7 @@ package util_test
 import (
 	"testing"
 
-	"github.com/anton15x/dropbox_ignore_service/src/util"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/util"
 	"github.com/stretchr/testify/require"
 )
 

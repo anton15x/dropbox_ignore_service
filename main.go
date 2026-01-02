@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/anton15x/dropbox_ignore_service/src/dropboxignorer"
-	"github.com/anton15x/dropbox_ignore_service/src/gui"
-	"github.com/anton15x/dropbox_ignore_service/src/util"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/dropboxignorer"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/gui"
+	"github.com/anton15x/dropbox_ignore_service/v2/src/util"
 )
 
 func getDropboxFoldersEnsured(cmdFolders []string) ([]string, error) {
